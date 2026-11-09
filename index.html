@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>טפסי מכרז</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="טפסי מכרז">
+<meta name="theme-color" content="#1d4ed8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root{--bg:#f3f4f6;--card:#fff;--ink:#111827;--mute:#6b7280;--line:#e5e7eb;--blue:#1d4ed8;--green:#15803d;--soft:#eff6ff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,"Segoe UI",Arial,sans-serif}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.top{position:sticky;top:0;z-index:5;background:var(--blue);color:#fff;padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;
+ display:flex;align-items:center;gap:10px;min-height:52px}
+.top h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .bk{background:none;border:0;color:#fff;font-size:16px;padding:6px 0;white-space:nowrap}
+.top .mn{background:rgba(255,255,255,.18);border:0;color:#fff;border-radius:8px;padding:6px 10px;font-size:14px}
+main{padding:14px 16px calc(env(safe-area-inset-bottom) + 96px);max-width:720px;margin:0 auto}
+.acts{display:flex;gap:10px;margin:0 0 14px}
+.big{flex:1;border:0;border-radius:12px;padding:14px;background:var(--blue);color:#fff;font-weight:600;font-size:16px}
+.big.alt{background:#fff;color:var(--blue);border:1px solid #bfdbfe;flex:0 0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:right;min-height:132px;
+ display:flex;flex-direction:column;gap:4px}
+.tile .h{font-size:13px;color:var(--mute);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.tile .n{font-weight:700;font-size:15px}
+.tile .d{font-size:14px;color:var(--blue);font-weight:600}
+.tile .c{margin-top:auto;font-size:13px;color:var(--mute)}
+.tile .bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden}.tile .bar i{display:block;height:100%;background:var(--green)}
+.empty{text-align:center;color:var(--mute);padding:40px 10px}
+.search{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;font-size:16px;margin-bottom:12px}
+.sec{font-size:13px;color:var(--mute);margin:16px 2px 6px;font-weight:600}
+.car{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;
+ margin-bottom:8px;width:100%;text-align:right}
+.car .lot{flex:0 0 46px;height:46px;border-radius:10px;background:var(--soft);color:var(--blue);display:flex;flex-direction:column;
+ align-items:center;justify-content:center;font-weight:700;font-size:17px;line-height:1}
+.car .lot small{font-size:10px;font-weight:400;color:var(--mute);margin-bottom:2px}
+.car .t{flex:1;min-width:0}.car .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.car .t span{font-size:14px;color:var(--mute)}.car .ph{font-size:13px;color:var(--mute);white-space:nowrap}
+.car.done{opacity:.6}.car.done .lot{background:#dcfce7;color:var(--green);font-size:22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:12px}
+.card h3{margin:0 0 8px;font-size:15px}
+.fld{display:block;margin-bottom:10px}.fld>span{display:block;font-size:13px;color:var(--mute);margin-bottom:3px;font-weight:600}
+.fld textarea,.fld input{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:10px 12px;background:#fff;font-size:16px}
+.fld textarea{min-height:64px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}.two .w2{grid-column:span 2}
+.info{font-size:14px;line-height:1.5}
+.photos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block;background:#e5e7eb}
+.addph{border:1.5px dashed #93c5fd;background:var(--soft);color:var(--blue);border-radius:8px;aspect-ratio:1;font-size:14px;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.addph b{font-size:26px;line-height:1}
+.foot{position:fixed;bottom:0;left:0;right:0;z-index:6;background:#fff;border-top:1px solid var(--line);
+ padding:10px 16px calc(env(safe-area-inset-bottom) + 10px);display:flex;gap:10px}
+.foot button{flex:1;border-radius:12px;padding:13px 6px;font-weight:600;border:1px solid var(--line);background:#fff}
+.foot .ok{background:var(--green);color:#fff;border-color:var(--green);flex:1.4}
+.lnk{background:none;border:0;color:var(--blue);padding:8px 0;font-size:15px}
+.danger{color:#b91c1c}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 90px);transform:translateX(-50%);background:#111827;color:#fff;
+ padding:10px 16px;border-radius:10px;font-size:15px;z-index:30;max-width:90vw;text-align:center}
+.ov{position:fixed;inset:0;z-index:20;background:#000;display:flex;flex-direction:column}
+.ov video{flex:1;width:100%;object-fit:cover;min-height:0}
+.ov .msg{color:#fff;text-align:center;padding:14px 16px calc(env(safe-area-inset-bottom) + 14px);background:rgba(0,0,0,.85)}
+.ov .msg b{display:block;font-size:17px;margin-bottom:4px}
+.ov .msg button{margin-top:10px;background:#fff;border:0;border-radius:10px;padding:10px 28px;font-weight:600}
+.ov .frame{position:absolute;left:12%;right:12%;top:18%;aspect-ratio:1;border:3px solid rgba(255,255,255,.85);border-radius:16px;pointer-events:none}
+.view{position:fixed;inset:0;z-index:25;background:#000;display:flex;flex-direction:column}
+.view img{flex:1;min-height:0;object-fit:contain;width:100%}
+.view .vb{display:flex;gap:10px;padding:12px 16px calc(env(safe-area-inset-bottom) + 12px)}
+.view .vb button{flex:1;border:0;border-radius:10px;padding:12px;font-weight:600}
+#print{display:none}
+@media print{
+ @page{size:A4;margin:9mm 10mm}
+ body{background:#fff}#app,.toast{display:none!important}#print{display:block}
+ .page{page-break-after:always}.page:last-child{page-break-after:auto}
+ .blk{height:92mm;padding:3mm 0 0;border-bottom:1.6px dashed #000;position:relative;overflow:hidden;font-family:Arial,sans-serif;color:#000}
+ .blk:last-child{border-bottom-color:transparent}
+ .tag{position:absolute;top:1mm;left:0;font-size:8.5pt;color:#9ca3af}
+ .ln{display:flex;align-items:flex-end;gap:1.6mm;margin:0 0 .45mm;font-size:11pt}
+ .lb{font-weight:bold;white-space:nowrap}
+ .f{display:block;min-width:0;height:5.3mm;border-bottom:1px solid #000;padding:0 1mm;line-height:5.1mm;white-space:nowrap;overflow:hidden;font-size:10.5pt}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="print"></div>
+<input type="file" id="cam" accept="image/*" capture="environment" multiple hidden>
+<input type="file" id="file" accept=".json,.cmform,application/json" hidden>
+<script src="vendor/jsQR.js" defer></script>
+<script>
+"use strict";
+// ---------------------------------------------------------------- the form's fields (same names as the tool on the computer)
+// Two-line fields on paper (visual + visual2 ...) are one text box here: the first line goes to the first, the rest to the second.
+const INSPECT = [["visual", "visual2", "ויזו – מכסה ס/פ"], ["md", "md2", "מד"], ["ab", "ab2", "ע.ב."], ["notes", "notes2", "הערות"]];
+const DETAILS = [["type", "סוג", 2], ["plate", "מס רכב"], ["color", "צבע"], ["year", "שנה"], ["cc", "נפח"], ["drive", "הנע"],
+  ["hand", "יד"], ["km", "ק\"מ"], ["ownership", "קו", 2], ["market", "שוק"], ["weighted", "משוקלל"], ["weighted_from", "משוקלל מ", 2],
+  ["lawyer", "עו\"ד", 2], ["location", "מיקום", 2]];
+const TOOL = [["rank", "דירוג"], ["sold_km", "ק\"מ בשוק"], ["fees", "אגרות"]];
+// the printed page, line by line, exactly like the tool's form: (field, label, width)
+const PRINT_LINES = [
+  [["lawyer", "עו\"ד", 5], ["location", "מיקום", 5]],
+  [["type", "סוג", 5], ["cc", "נפח", 1.3], ["drive", "הנע", 1.6], ["year", "שנה", 1.2], ["market", "שוק:", 2.4]],
+  [["plate", "מס רכב", 3], ["color", "צבע", 2.6], ["weighted", "משוקלל:", 3]],
+  [["hand", "יד", 0.8], ["ownership", "קו", 3.6], ["km", "קמ", 1.8], ["weighted_from", "משוקלל מ:", 2.6]],
+  [["visual", "*ויזו-מכסה ס/פ", "*"]], [["visual2", "•", "*"]], [["md", "*מד", "*"]], [["md2", "•", "*"]],
+  [["ab", "•ע.ב.", "*"]], [["ab2", "", "*"]], [["rank", "דירוג", "*"]], [["sold_km", "ק\"מ בשוק", "*"]],
+  [["notes", "הערות", "*"]], [["notes2", "•", "*"]], [["fees", "אגרות", "*"]]];
+
+// ---------------------------------------------------------------- storage on the phone (IndexedDB: forms and photos)
+let DB;
+function openDb() {
+  return new Promise((ok, bad) => {
+    const r = indexedDB.open("auction-forms", 1);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      d.createObjectStore("forms", { keyPath: "key" });
+      d.createObjectStore("photos", { keyPath: "id", autoIncrement: true }).createIndex("car", ["key", "lot"]);
+    };
+    r.onsuccess = () => ok(r.result);
+    r.onerror = () => bad(r.error);
+  });
+}
+function tx(store, mode, fn) {
+  return new Promise((ok, bad) => {
+    const t = DB.transaction(store, mode), s = t.objectStore(store);
+    let out;
+    const req = fn(s);
+    if (req) req.onsuccess = () => { out = req.result; };
+    t.oncomplete = () => ok(out);
+    t.onerror = t.onabort = () => bad(t.error);
+  });
+}
+const getForm = (key) => tx("forms", "readonly", (s) => s.get(key));
+const allForms = () => tx("forms", "readonly", (s) => s.getAll());
+const putForm = (f) => tx("forms", "readwrite", (s) => s.put(f));
+const carPhotos = (key, lot) => tx("photos", "readonly", (s) => s.index("car").getAll([key, lot]));
+const addPhoto = (p) => tx("photos", "readwrite", (s) => s.add(p));
+const delPhoto = (id) => tx("photos", "readwrite", (s) => s.delete(id));
+async function delForm(key) {
+  const ph = await tx("photos", "readonly", (s) => s.getAll());
+  await tx("photos", "readwrite", (s) => { ph.filter((p) => p.key === key).forEach((p) => s.delete(p.id)); });
+  await tx("forms", "readwrite", (s) => s.delete(key));
+}
+
+// ---------------------------------------------------------------- helpers
+const $ = (s) => document.querySelector(s);
+const H = (x) => String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const val = (car, f) => (f in car.mine ? car.mine[f] : car.base[f] ?? "") + "";
+const digits = (s) => String(s || "").replace(/\D/g, "");
+function toast(t, ms = 2600) {
+  document.querySelectorAll(".toast").forEach((x) => x.remove());
+  const d = document.createElement("div"); d.className = "toast"; d.textContent = t; document.body.appendChild(d);
+  setTimeout(() => d.remove(), ms);
+}
+function dateLine(f) {
+  if (!f.date) return "";
+  const d = new Date(f.date + "T12:00:00");
+  if (isNaN(d)) return f.date;
+  const day = d.toLocaleDateString("he-IL", { weekday: "long" });
+  const dd = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+  return `${day} ${dd}${f.time ? " · " + f.time : ""}`;
+}
+const houseShort = (h) => String(h || "").replace(/חברת עורכי דין|עורכי דין|ושות'?|משרד עו"ד/g, "").replace(/\s+/g, " ").trim();
+const carTitle = (c) => val(c, "type") || "רכב";
+
+// ---------------------------------------------------------------- getting a form from the computer
+async function unpack(packed) {
+  const b64 = packed.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((packed.length + 3) % 4);
+  const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const stream = new Blob([bin]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  return JSON.parse(await new Response(stream).text());
+}
+// a form sent again: new cars are added, the tool's data is refreshed, and what was written on the phone stays
+async function importForm(d) {
+  if (!d || !d.key || !Array.isArray(d.cars)) throw new Error("זה לא טופס מהכלי");
+  const old = await getForm(d.key);
+  const f = old || { key: d.key, added: Date.now(), cars: [] };
+  Object.assign(f, { house: d.house || f.house || "", name: d.name || f.name || "", date: d.date || f.date || "", time: d.time || f.time || "" });
+  let added = 0;
+  for (const c of d.cars) {
+    const base = { ...c }; delete base.lot;
+    const have = f.cars.find((x) => x.lot === c.lot);
+    if (have) have.base = base;
+    else { f.cars.push({ lot: c.lot, base, mine: {}, done: false }); added++; }
+  }
+  f.cars.sort((a, b) => a.lot - b.lot);
+  await putForm(f);
+  toast(old ? `הטופס עודכן: ${d.cars.length} רכבים${added ? `, ${added} חדשים` : ""}` : `נקלט טופס עם ${d.cars.length} רכבים`);
+  location.hash = "#f/" + f.key;
+}
+
+let scan = null;
+async function startScan() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast("אין גישה למצלמה בדפדפן הזה. אפשר לפתוח קובץ."); return; }
+  const ov = document.createElement("div");
+  ov.className = "ov";
+  ov.innerHTML = `<video playsinline muted autoplay></video><div class="frame"></div>
+    <div class="msg"><b>כוון את המצלמה לברקוד שעל מסך המחשב</b><span id="sc">מחפש ברקוד…</span><br><button type="button">ביטול</button></div>`;
+  document.body.appendChild(ov);
+  const video = ov.querySelector("video");
+  scan = { ov, parts: {}, tag: null, total: 0, stream: null, busy: false };
+  ov.querySelector("button").onclick = stopScan;
+  try {
+    scan.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+  } catch (e) { stopScan(); toast("לא קיבלתי אישור למצלמה. אפשר לאשר בהגדרות, או לפתוח קובץ."); return; }
+  video.srcObject = scan.stream;
+  await video.play().catch(() => {});
+  const cv = document.createElement("canvas"), cx = cv.getContext("2d", { willReadFrequently: true });
+  const loop = () => {
+    if (!scan) return;
+    if (video.readyState >= 2 && window.jsQR) {
+      const w = video.videoWidth, h = video.videoHeight, side = Math.min(w, h) * 0.9;
+      const k = Math.min(1, 900 / side), n = Math.round(side * k);
+      cv.width = cv.height = n;
+      cx.drawImage(video, (w - side) / 2, (h - side) / 2, side, side, 0, 0, n, n);
+      const code = jsQR(cx.getImageData(0, 0, n, n).data, n, n, { inversionAttempts: "dontInvert" });
+      if (code && code.data) gotCode(code.data);
+    }
+    if (scan) scan.timer = setTimeout(loop, 120);
+  };
+  loop();
+}
+function stopScan() {
+  if (!scan) return;
+  clearTimeout(scan.timer);
+  if (scan.stream) scan.stream.getTracks().forEach((t) => t.stop());
+  scan.ov.remove();
+  scan = null;
+}
+async function gotCode(text) {
+  const m = /^CMF1:([0-9a-f]+):(\d+)\/(\d+):(.+)$/s.exec(text);
+  if (!m || !scan || scan.busy) return;
+  const [, tag, i, n, part] = m;
+  if (scan.tag !== tag) { scan.tag = tag; scan.parts = {}; scan.total = +n; }
+  if (!scan.parts[i]) { scan.parts[i] = part; if (navigator.vibrate) navigator.vibrate(30); }
+  const got = Object.keys(scan.parts).length;
+  scan.ov.querySelector("#sc").textContent = scan.total > 1 ? `נקלטו ${got} מתוך ${scan.total} ברקודים` : "נקלט";
+  if (got < scan.total) return;
+  scan.busy = true;
+  const packed = Array.from({ length: scan.total }, (_, j) => scan.parts[j + 1]).join("");
+  stopScan();
+  try { await importForm(await unpack(packed)); } catch (e) { toast("הקליטה נכשלה: " + e.message); }
+}
+async function openFile(file) {
+  try { await importForm(JSON.parse(await file.text())); } catch (e) { toast("לא הצלחתי לפתוח את הקובץ: " + e.message); }
+}
+
+// ---------------------------------------------------------------- photos: smaller copies, so hundreds fit on the phone
+function shrink(file, max = 1600) {
+  return new Promise((ok, bad) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob((b) => (b ? ok(b) : bad(new Error("photo"))), "image/jpeg", 0.82);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); bad(new Error("photo")); };
+    img.src = url;
+  });
+}
+
+// ---------------------------------------------------------------- screens
+let urls = [];
+function freeUrls() { urls.forEach((u) => URL.revokeObjectURL(u)); urls = []; }
+const app = $("#app");
+
+async function route() {
+  freeUrls();
+  const [kind, key, lot] = location.hash.slice(1).split("/");
+  if (kind === "f" && key) return formScreen(key);
+  if (kind === "c" && key) return carScreen(key, +lot);
+  return home();
+}
+
+async function home() {
+  const forms = (await allForms()).sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.added - a.added);
+  app.innerHTML = `<div class="top"><h1>טפסי מכרז</h1></div><main>
+    <div class="acts"><button class="big" id="scan">קלוט טופס מהמחשב</button><button class="big alt" id="of">פתח קובץ</button></div>
+    ${forms.length ? `<div class="grid">${forms.map((f) => {
+      const done = f.cars.filter((c) => c.done).length;
+      return `<button class="tile" data-k="${H(f.key)}"><span class="h">${H(houseShort(f.house))}</span>
+        <span class="n">${H(f.name || "מכרז " + f.key)}</span><span class="d">${H(dateLine(f))}</span>
+        <span class="c">${f.cars.length} רכבים · ${done} נבדקו</span>
+        <span class="bar"><i style="width:${f.cars.length ? (100 * done) / f.cars.length : 0}%"></i></span></button>`;
+    }).join("")}</div>`
+    : `<div class="empty">עדיין אין טפסים.<br>בכלי במחשב: פתח את הטופס ← <b>שלח לטלפון</b>,<br>ואז כאן: <b>קלוט טופס מהמחשב</b>.</div>`}
+    </main>`;
+  $("#scan").onclick = startScan;
+  $("#of").onclick = () => $("#file").click();
+  app.querySelectorAll(".tile").forEach((t) => (t.onclick = () => (location.hash = "#f/" + t.dataset.k)));
+}
+
+let query = "";
+async function formScreen(key) {
+  const f = await getForm(key);
+  if (!f) { location.hash = ""; return; }
+  const counts = {};
+  (await tx("photos", "readonly", (s) => s.getAll())).filter((p) => p.key === key).forEach((p) => (counts[p.lot] = (counts[p.lot] || 0) + 1));
+  app.innerHTML = `<div class="top"><button class="bk" id="bk">→ טפסים</button><h1>${H(f.name || "מכרז " + f.key)}</h1>
+    <button class="mn" id="pr">הדפס</button></div><main>
+    <div class="muted" style="color:var(--mute);font-size:14px;margin:-2px 2px 10px">${H(houseShort(f.house))} · ${H(dateLine(f))}</div>
+    <input class="search" id="q" type="search" placeholder="חיפוש לפי מספר רכב, סוג או פריט" value="${H(query)}">
+    <div id="list"></div>
+    <button class="lnk danger" id="del">מחק את הטופס מהטלפון</button></main>`;
+  const row = (c) => `<button class="car ${c.done ? "done" : ""}" data-l="${c.lot}">
+      <span class="lot">${c.done ? "✓" : `<small>פריט</small>${c.lot}`}</span>
+      <span class="t"><b>${H(carTitle(c))}</b><span>${H(val(c, "plate") || "—")} · ${H(val(c, "color") || "—")}${val(c, "year") ? " · " + H(val(c, "year")) : ""}${c.done ? " · פריט " + c.lot : ""}</span></span>
+      ${counts[c.lot] ? `<span class="ph">📷 ${counts[c.lot]}</span>` : ""}</button>`;
+  const draw = () => {
+    const q = query.trim().toLowerCase(), qd = digits(q);
+    const hit = (c) => !q || carTitle(c).toLowerCase().includes(q) || (qd && digits(val(c, "plate")).includes(qd)) || String(c.lot) === q;
+    const open = f.cars.filter((c) => !c.done && hit(c)), done = f.cars.filter((c) => c.done && hit(c));
+    $("#list").innerHTML = (open.length ? open.map(row).join("") : `<div class="empty">${q ? "לא נמצא רכב" : "כל הרכבים נבדקו ✓"}</div>`)
+      + (done.length ? `<div class="sec">נבדקו (${done.length})</div>${done.map(row).join("")}` : "");
+    $("#list").querySelectorAll(".car").forEach((b) => (b.onclick = () => (location.hash = `#c/${key}/${b.dataset.l}`)));
+  };
+  draw();
+  $("#q").oninput = (e) => { query = e.target.value; draw(); };
+  $("#bk").onclick = () => { query = ""; location.hash = ""; };
+  $("#pr").onclick = () => printForm(f);
+  $("#del").onclick = async () => {
+    if (!confirm("למחוק את הטופס הזה מהטלפון, כולל כל מה שכתבת והתמונות? אי אפשר לשחזר.")) return;
+    await delForm(key); query = ""; location.hash = "";
+  };
+}
+
+let saveTimer = null;
+async function carScreen(key, lot) {
+  const f = await getForm(key);
+  const car = f && f.cars.find((c) => c.lot === lot);
+  if (!car) { location.hash = f ? "#f/" + key : ""; return; }
+  const area = ([a, b, label]) => {
+    const v = [val(car, a), val(car, b)].filter(Boolean).join("\n");
+    return `<label class="fld"><span>${H(label)}</span><textarea data-a="${a}" data-b="${b}" rows="2">${H(v)}</textarea></label>`;
+  };
+  const input = ([k, label, w]) => `<label class="fld ${w === 2 ? "w2" : ""}"><span>${H(label)}</span><input data-k="${k}" value="${H(val(car, k))}"></label>`;
+  const tool = TOOL.map(([k, label]) => `<label class="fld"><span>${H(label)}</span><textarea data-k="${k}" rows="2">${H(val(car, k))}</textarea></label>`).join("");
+  app.innerHTML = `<div class="top"><button class="bk" id="bk">→ רשימה</button><h1>פריט ${lot} · ${H(carTitle(car))}</h1></div><main>
+    <div class="card"><div class="info"><b>${H(val(car, "plate") || "—")}</b> · ${H(val(car, "color") || "")} · ${H(val(car, "year") || "")}
+      · יד ${H(val(car, "hand") || "—")} · ${H(val(car, "km") ? val(car, "km") + " ק\"מ" : "")}<br>
+      <span style="color:var(--mute)">${H(val(car, "fees"))}</span></div></div>
+    <div class="card"><h3>בדיקה בשטח</h3>${INSPECT.map(area).join("")}
+      <div class="sec" style="margin-top:4px">תמונות</div><div class="photos" id="photos"></div></div>
+    <div class="card"><h3>פרטי הרכב</h3><div class="two">${DETAILS.map(input).join("")}</div></div>
+    <div class="card"><h3>מידע מהכלי</h3>${tool}</div>
+    ${car.done ? `<button class="lnk" id="undo">החזר לרשימה (סמן כלא נבדק)</button>` : ""}
+    </main>
+    <div class="foot"><button id="ph">📷 צלם</button><button id="sh">שתף</button><button class="ok" id="ok">✓ אישור</button></div>`;
+
+  const collect = () => {
+    app.querySelectorAll("textarea[data-a]").forEach((t) => {
+      const lines = t.value.split("\n").map((s) => s.trim());
+      const first = lines.shift() || "", rest = lines.filter(Boolean).join(" ");
+      setMine(car, t.dataset.a, first); setMine(car, t.dataset.b, rest);
+    });
+    app.querySelectorAll("[data-k]").forEach((i) => setMine(car, i.dataset.k, i.value.replace(/\s+/g, " ").trim()));
+    car.updated = Date.now();
+  };
+  const save = async () => { clearTimeout(saveTimer); collect(); await putForm(f); };
+  app.querySelector("main").addEventListener("input", () => { clearTimeout(saveTimer); saveTimer = setTimeout(save, 500); });
+  $("#bk").onclick = async () => { await save(); location.hash = "#f/" + key; };
+  $("#ok").onclick = async () => { car.done = true; car.doneAt = Date.now(); await save(); toast(`פריט ${lot} נשמר ✓`, 1600); location.hash = "#f/" + key; };
+  if ($("#undo")) $("#undo").onclick = async () => { car.done = false; await save(); location.hash = "#f/" + key; };
+  $("#sh").onclick = async () => { await save(); shareCar(f, car); };
+
+  const drawPhotos = async () => {
+    freeUrls();
+    const ph = await carPhotos(key, lot);
+    $("#photos").innerHTML = ph.map((p) => { const u = URL.createObjectURL(p.blob); urls.push(u); return `<img src="${u}" data-id="${p.id}" alt="">`; }).join("")
+      + `<button class="addph" id="ph2"><b>+</b>צלם</button>`;
+    $("#ph2").onclick = () => $("#cam").click();
+    $("#photos").querySelectorAll("img").forEach((im) => (im.onclick = () => viewPhoto(im.src, +im.dataset.id, drawPhotos)));
+  };
+  $("#ph").onclick = () => $("#cam").click();
+  $("#cam").onchange = async (e) => {
+    const files = [...e.target.files]; e.target.value = "";
+    for (const file of files) {
+      try { await addPhoto({ key, lot, blob: await shrink(file), ts: Date.now() }); } catch (err) { toast("התמונה לא נשמרה"); }
+    }
+    drawPhotos();
+  };
+  drawPhotos();
+}
+function setMine(car, k, v) {
+  if (v === (car.base[k] ?? "") + "") delete car.mine[k];   // same as the tool wrote: nothing to keep
+  else car.mine[k] = v;
+}
+function viewPhoto(src, id, after) {
+  const v = document.createElement("div");
+  v.className = "view";
+  v.innerHTML = `<img src="${src}" alt=""><div class="vb"><button class="danger" id="vd">מחק תמונה</button><button id="vc">סגור</button></div>`;
+  document.body.appendChild(v);
+  v.querySelector("#vc").onclick = () => v.remove();
+  v.querySelector("#vd").onclick = async () => { if (!confirm("למחוק את התמונה?")) return; await delPhoto(id); v.remove(); after(); };
+}
+
+// ---------------------------------------------------------------- sharing (WhatsApp and the rest, through the phone's share menu)
+function carText(f, car) {
+  const L = [`*פריט ${car.lot} · ${carTitle(car)}*`, `${f.name || "מכרז " + f.key}${f.date ? " · " + dateLine(f) : ""}`];
+  const kv = (label, k) => { const v = val(car, k); if (v) L.push(`${label}: ${v}`); };
+  kv("מס רכב", "plate"); kv("צבע", "color"); kv("שנה", "year"); kv("יד", "hand"); kv("קו", "ownership"); kv("ק\"מ", "km");
+  INSPECT.forEach(([a, b, label]) => { const v = [val(car, a), val(car, b)].filter(Boolean).join(" "); if (v) L.push(`${label}: ${v}`); });
+  kv("שוק", "market"); kv("משוקלל", "weighted"); kv("משוקלל מ", "weighted_from"); kv("אגרות", "fees"); kv("מיקום", "location");
+  return L.join("\n");
+}
+async function shareCar(f, car) {
+  const text = carText(f, car);
+  const ph = await carPhotos(f.key, car.lot);
+  const files = ph.map((p, i) => new File([p.blob], `פריט${car.lot}_${i + 1}.jpg`, { type: "image/jpeg" }));
+  try {
+    if (files.length && navigator.canShare && navigator.canShare({ files })) return await navigator.share({ files, text });
+    if (navigator.share) return await navigator.share({ text });
+  } catch (e) { if (e.name === "AbortError") return; }
+  location.href = "https://wa.me/?text=" + encodeURIComponent(text);
+}
+
+// ---------------------------------------------------------------- print / PDF: the same A4 page as the tool, 3 cars a page
+function printForm(f) {
+  const blocks = f.cars.map((car) => `<div class="blk"><div class="tag">פריט ${car.lot}</div>${PRINT_LINES.map((line) =>
+    `<div class="ln">${line.map(([k, label, w]) => `${label ? `<span class="lb">${H(label)}</span>` : ""}<span class="f" style="flex:${w === "*" ? 1 : w} 1 0">${H(val(car, k))}</span>`).join("")}</div>`).join("")}</div>`);
+  let html = "";
+  for (let i = 0; i < blocks.length; i += 3) html += `<div class="page">${blocks.slice(i, i + 3).join("")}</div>`;
+  const pr = $("#print");
+  pr.innerHTML = html;
+  // measured off screen at paper width, so a long line (the ranking) gets a smaller font and fits
+  pr.style.cssText = "display:block;position:absolute;right:-9999px;top:0;width:190mm;font-family:Arial,sans-serif";
+  pr.querySelectorAll(".ln").forEach((el) => (el.style.cssText = "display:flex;gap:1.6mm;font-size:11pt"));
+  pr.querySelectorAll(".f").forEach((el) => {
+    el.style.cssText += ";display:block;min-width:0;white-space:nowrap;overflow:hidden;padding:0 1mm;font-size:10.5pt";
+    let s = 10.5;
+    while (el.scrollWidth > el.clientWidth + 1 && s > 7) { s -= 0.5; el.style.fontSize = s + "pt"; }
+  });
+  pr.style.cssText = "";
+  pr.querySelectorAll(".ln").forEach((el) => (el.style.cssText = ""));
+  setTimeout(() => window.print(), 50);
+}
+
+// ---------------------------------------------------------------- start
+$("#file").onchange = (e) => { const file = e.target.files[0]; e.target.value = ""; if (file) openFile(file); };
+addEventListener("hashchange", route);
+(async () => {
+  try { DB = await openDb(); } catch (e) { app.innerHTML = `<p style="padding:20px">אין גישה לאחסון בטלפון: ${H(e.message)}</p>`; return; }
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  route();
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+</body>
+</html>
