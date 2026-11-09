@@ -75,6 +75,17 @@ main{padding:14px 16px calc(env(safe-area-inset-bottom) + 96px);max-width:720px;
 .view img{flex:1;min-height:0;object-fit:contain;width:100%}
 .view .vb{display:flex;gap:10px;padding:12px 16px calc(env(safe-area-inset-bottom) + 12px)}
 .view .vb button{flex:1;border:0;border-radius:10px;padding:12px;font-weight:600}
+.paper{background:#fff;border:1px solid #d1d5db;border-radius:4px;padding:16px 10px 8px;margin-bottom:12px;position:relative;
+ font-family:Arial,sans-serif;color:#000;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.paper .tag{position:absolute;top:3px;left:8px;font-size:11px;color:#9ca3af}
+.paper .pl{display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px 8px;margin:0 0 7px;font-size:14px}
+.paper .pc{display:flex;align-items:flex-end;gap:4px;min-width:0}
+.paper .pb{font-weight:bold;white-space:nowrap}
+.paper .pf{flex:1 1 auto;min-width:34px;border-bottom:1px solid #000;padding:0 3px;min-height:20px;line-height:19px;white-space:nowrap}
+.paper .pf.sm{font-size:12.5px;white-space:normal;min-width:0}
+.pv-ph{margin-top:6px}
+.seg{display:flex;gap:8px;margin:0 0 12px}
+.seg button{flex:1;border:1px solid #bfdbfe;background:#fff;color:var(--blue);border-radius:10px;padding:9px;font-weight:600}
 #print{display:none}
 @media print{
  @page{size:A4;margin:9mm 10mm}
@@ -280,6 +291,8 @@ async function route() {
   const [kind, key, lot] = location.hash.slice(1).split("/");
   if (kind === "f" && key) return formScreen(key);
   if (kind === "c" && key) return carScreen(key, +lot);
+  if (kind === "p" && key) return pageScreen(key, +lot);
+  if (kind === "a" && key) return pageScreen(key, null);
   return home();
 }
 
@@ -310,6 +323,7 @@ async function formScreen(key) {
   app.innerHTML = `<div class="top"><button class="bk" id="bk">→ טפסים</button><h1>${H(f.name || "מכרז " + f.key)}</h1>
     <button class="mn" id="pr">הדפס</button></div><main>
     <div class="muted" style="color:var(--mute);font-size:14px;margin:-2px 2px 10px">${H(houseShort(f.house))} · ${H(dateLine(f))}</div>
+    <div class="seg"><button id="all">📄 הטופס המלא (כמו בדף)</button></div>
     <input class="search" id="q" type="search" placeholder="חיפוש לפי מספר רכב, סוג או פריט" value="${H(query)}">
     <div id="list"></div>
     <button class="lnk danger" id="del">מחק את הטופס מהטלפון</button></main>`;
@@ -323,9 +337,14 @@ async function formScreen(key) {
     const open = f.cars.filter((c) => !c.done && hit(c)), done = f.cars.filter((c) => c.done && hit(c));
     $("#list").innerHTML = (open.length ? open.map(row).join("") : `<div class="empty">${q ? "לא נמצא רכב" : "כל הרכבים נבדקו ✓"}</div>`)
       + (done.length ? `<div class="sec">נבדקו (${done.length})</div>${done.map(row).join("")}` : "");
-    $("#list").querySelectorAll(".car").forEach((b) => (b.onclick = () => (location.hash = `#c/${key}/${b.dataset.l}`)));
+    // a checked car opens as the paper page; one still to check opens for editing
+    $("#list").querySelectorAll(".car").forEach((b) => (b.onclick = () => {
+      const c = f.cars.find((x) => x.lot === +b.dataset.l);
+      location.hash = `#${c && c.done ? "p" : "c"}/${key}/${b.dataset.l}`;
+    }));
   };
   draw();
+  $("#all").onclick = () => (location.hash = "#a/" + key);
   $("#q").oninput = (e) => { query = e.target.value; draw(); };
   $("#bk").onclick = () => { query = ""; location.hash = ""; };
   $("#pr").onclick = () => printForm(f);
@@ -370,7 +389,7 @@ async function carScreen(key, lot) {
   const save = async () => { clearTimeout(saveTimer); collect(); await putForm(f); };
   app.querySelector("main").addEventListener("input", () => { clearTimeout(saveTimer); saveTimer = setTimeout(save, 500); });
   $("#bk").onclick = async () => { await save(); location.hash = "#f/" + key; };
-  $("#ok").onclick = async () => { car.done = true; car.doneAt = Date.now(); await save(); toast(`פריט ${lot} נשמר ✓`, 1600); location.hash = "#f/" + key; };
+  $("#ok").onclick = async () => { car.done = true; car.doneAt = Date.now(); await save(); toast(`פריט ${lot} נשמר ✓`, 1600); location.hash = `#p/${key}/${lot}`; };
   if ($("#undo")) $("#undo").onclick = async () => { car.done = false; await save(); location.hash = "#f/" + key; };
   $("#sh").onclick = async () => { await save(); shareCar(f, car); };
 
@@ -405,6 +424,95 @@ function viewPhoto(src, id, after) {
   v.querySelector("#vd").onclick = async () => { if (!confirm("למחוק את התמונה?")) return; await delPhoto(id); v.remove(); after(); };
 }
 
+// ---------------------------------------------------------------- the paper page: the same lines as the printed form
+const LONG = new Set(["rank", "sold_km", "fees", "notes", "notes2", "location", "lawyer"]);
+function paperBlock(car) {
+  return `<div class="paper"><div class="tag">פריט ${car.lot}</div>${PRINT_LINES.map((line) =>
+    // each label + field stays together; a crowded line wraps on the phone instead of breaking words
+    `<div class="pl">${line.map(([k, label, w]) => `<span class="pc" style="flex:${w === "*" ? 1 : w} 1 auto">`
+      + `${label ? `<span class="pb">${H(label)}</span>` : ""}`
+      + `<span class="pf ${LONG.has(k) ? "sm" : ""}">${H(val(car, k))}</span></span>`).join("")}</div>`).join("")}</div>`;
+}
+
+async function pageScreen(key, lot) {
+  const f = await getForm(key);
+  if (!f) { location.hash = ""; return; }
+  const one = lot != null && !isNaN(lot);
+  const car = one ? f.cars.find((c) => c.lot === lot) : null;
+  if (one && !car) { location.hash = "#f/" + key; return; }
+  const cars = one ? [car] : f.cars;
+  app.innerHTML = `<div class="top"><button class="bk" id="bk">→ רשימה</button>
+    <h1>${one ? `פריט ${lot}${car.done ? " ✓" : ""}` : "הטופס המלא"}</h1>${one ? "" : `<button class="mn" id="pr">הדפס</button>`}</div><main>
+    ${cars.map(paperBlock).join("")}
+    ${one ? `<div class="sec">תמונות</div><div class="photos pv-ph" id="photos"></div>` : ""}</main>
+    ${one ? `<div class="foot"><button id="ed">✎ ערוך</button><button id="sh">שתף</button><button class="ok" id="bk2">→ רשימה</button></div>` : ""}`;
+  $("#bk").onclick = () => (location.hash = "#f/" + key);
+  if (!one) { $("#pr").onclick = () => printForm(f); return; }
+  $("#bk2").onclick = () => (location.hash = "#f/" + key);
+  $("#ed").onclick = () => (location.hash = `#c/${key}/${lot}`);
+  $("#sh").onclick = () => shareCar(f, car);
+  const ph = await carPhotos(key, lot);
+  $("#photos").innerHTML = ph.length ? ph.map((p) => { const u = URL.createObjectURL(p.blob); urls.push(u); return `<img src="${u}" data-id="${p.id}" alt="">`; }).join("")
+    : `<span style="color:var(--mute);font-size:14px">אין תמונות</span>`;
+  $("#photos").querySelectorAll("img").forEach((im) => (im.onclick = () => viewPhoto(im.src, +im.dataset.id, () => pageScreen(key, lot))));
+}
+
+// The paper page as a picture, for WhatsApp: drawn line by line like the printed form. Long lines wrap.
+function paperImage(f, car) {
+  const W = 1200, PAD = 36, GAP = 10, LH = 46, FONT = 28;
+  const c = document.createElement("canvas"), x = c.getContext("2d");
+  const lay = [];
+  let y = PAD + 30;
+  x.font = `bold ${FONT}px Arial`;
+  for (const line of PRINT_LINES) {
+    const labels = line.map(([, label]) => (label ? x.measureText(label).width + GAP : 0));
+    const free = W - 2 * PAD - labels.reduce((a, b) => a + b, 0) - GAP * (line.length - 1);
+    const total = line.reduce((a, [, , w]) => a + (w === "*" ? 1 : w), 0);
+    let right = W - PAD, rows = 1;
+    const cells = line.map(([k, label, w], i) => {
+      const fw = free * (w === "*" ? 1 : w) / total;
+      const cell = { label, lx: right, fx: right - labels[i], fw, text: val(car, k) };
+      right -= labels[i] + fw + GAP;
+      // shrink a little, then wrap: one field may take a few lines
+      x.font = `${FONT}px Arial`;
+      let size = FONT;
+      while (x.measureText(cell.text).width > fw - 8 && size > 22) { size -= 2; x.font = `${size}px Arial`; }
+      cell.size = size;
+      cell.lines = wrap(x, cell.text, fw - 8);
+      rows = Math.max(rows, cell.lines.length);
+      return cell;
+    });
+    lay.push({ y, cells, rows });
+    y += LH * rows;
+  }
+  c.width = W; c.height = y + PAD - 10;
+  x.fillStyle = "#fff"; x.fillRect(0, 0, W, c.height);
+  x.direction = "rtl"; x.textBaseline = "alphabetic";
+  x.fillStyle = "#6b7280"; x.font = `22px Arial`; x.textAlign = "left";
+  x.fillText(`פריט ${car.lot} · ${f.name || "מכרז " + f.key}${f.date ? " · " + dateLine(f) : ""}`, PAD, PAD);
+  for (const { y: top, cells, rows } of lay) {
+    for (const cell of cells) {
+      x.fillStyle = "#000"; x.textAlign = "right";
+      if (cell.label) { x.font = `bold ${FONT}px Arial`; x.fillText(cell.label, cell.lx, top + LH * rows - 14); }
+      x.font = `${cell.size}px Arial`;
+      cell.lines.forEach((t, i) => x.fillText(t, cell.fx - 12, top + LH * (rows - cell.lines.length + i + 1) - 14));
+      x.fillRect(cell.fx - cell.fw, top + LH * rows - 6, cell.fw, 2);
+    }
+  }
+  return new Promise((ok) => c.toBlob(ok, "image/png"));
+}
+function wrap(x, text, width) {
+  if (!text) return [""];
+  const out = [];
+  let cur = "";
+  for (const w of String(text).split(" ")) {
+    const t = cur ? cur + " " + w : w;
+    if (x.measureText(t).width > width && cur) { out.push(cur); cur = w; } else cur = t;
+  }
+  out.push(cur);
+  return out;
+}
+
 // ---------------------------------------------------------------- sharing (WhatsApp and the rest, through the phone's share menu)
 function carText(f, car) {
   const L = [`*פריט ${car.lot} · ${carTitle(car)}*`, `${f.name || "מכרז " + f.key}${f.date ? " · " + dateLine(f) : ""}`];
@@ -418,6 +526,7 @@ async function shareCar(f, car) {
   const text = carText(f, car);
   const ph = await carPhotos(f.key, car.lot);
   const files = ph.map((p, i) => new File([p.blob], `פריט${car.lot}_${i + 1}.jpg`, { type: "image/jpeg" }));
+  try { files.unshift(new File([await paperImage(f, car)], `פריט${car.lot}_טופס.png`, { type: "image/png" })); } catch (e) { /* text only */ }
   try {
     if (files.length && navigator.canShare && navigator.canShare({ files })) return await navigator.share({ files, text });
     if (navigator.share) return await navigator.share({ text });
