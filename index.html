@@ -39,7 +39,8 @@ main{padding:14px 16px calc(env(safe-area-inset-bottom) + 96px);max-width:720px;
 .legend{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
 .lg{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:16px;padding:5px 10px;font-size:13px;
  max-width:100%;text-align:right}
-.lg i{flex:0 0 10px;height:10px;border-radius:50%}.lg span{color:var(--mute)}
+.lg i{flex:0 0 12px;height:12px;border-radius:50%}
+.car .lot{background:rgba(255,255,255,.75)}.lg span{color:var(--mute)}
 .lg.on{border-color:var(--blue);background:var(--soft);font-weight:600}
 .area{border:1px dashed #cbd5e1;background:transparent;color:var(--mute);border-radius:10px;padding:7px 8px;font-size:13px;
  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -376,7 +377,9 @@ async function formScreen(key) {
   const multi = places.length > 1;
   const colorOf = (p) => PLACE_COLORS[places.indexOf(p) % PLACE_COLORS.length];
   let onlyPlace = null;
-  const row = (c) => `<button class="car ${c.done ? "done" : ""}" data-l="${c.lot}"${multi ? ` style="border-inline-start:6px solid ${colorOf(placeOf(c))}"` : ""}>
+  // the whole row in a light shade of its place's color (text stays readable), with a strong strip at the side
+  const tint = (p) => { const col = colorOf(p); return `background:${col}24;border-color:${col}66;border-inline-start:7px solid ${col}`; };
+  const row = (c) => `<button class="car ${c.done ? "done" : ""}" data-l="${c.lot}"${multi ? ` style="${tint(placeOf(c))}"` : ""}>
       <span class="lot">${c.done ? "✓" : `<small>פריט</small>${c.lot}`}</span>
       <span class="t"><b>${H(carTitle(c))}</b><span>${H(val(c, "plate") || "—")} · ${H(val(c, "color") || "—")}${val(c, "year") ? " · " + H(val(c, "year")) : ""}${c.done ? " · פריט " + c.lot : ""}</span></span>
       ${counts[c.lot] ? `<span class="ph">📷 ${counts[c.lot]}</span>` : ""}</button>`;
