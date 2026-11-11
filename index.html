@@ -36,6 +36,18 @@ main{padding:14px 16px calc(env(safe-area-inset-bottom) + 96px);max-width:720px;
 .tile .bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden}.tile .bar i{display:block;height:100%;background:var(--green)}
 .empty{text-align:center;color:var(--mute);padding:40px 10px}
 .tw{display:flex;flex-direction:column;gap:6px}
+.alltile{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;margin:0 0 14px;padding:14px 12px;border:0;
+ border-radius:14px;background:#ec4899;color:#fff;box-shadow:0 2px 8px rgba(236,72,153,.35);text-align:center}
+.alltile b{font-size:18px}.alltile span{font-size:13px;opacity:.92}
+.ahead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:16px 2px 6px;padding-bottom:4px;border-bottom:2px solid #f9a8d4}
+.ahead b{font-size:15px}.ahead span{font-size:13px;color:var(--mute)}
+.arow{display:grid;grid-template-columns:34px 1fr auto;grid-template-areas:"n t t" "n p c";gap:0 8px;width:100%;text-align:right;
+ background:#fff;border:1px solid var(--line);border-radius:10px;padding:7px 10px;margin-bottom:5px;align-items:center}
+.arow .an{grid-area:n;font-weight:700;color:var(--blue);text-align:center;font-size:15px}
+.arow b{grid-area:t;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arow .ap{grid-area:p;font-size:14px;direction:ltr;text-align:right}.arow .ac{grid-area:c;font-size:13px;color:var(--mute)}
+.arow.done{opacity:.55}.arow.done .an{color:var(--green)}
+.car .t .where{display:block;font-size:12.5px;color:var(--blue);margin-top:2px;line-height:1.35}
 .legend{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
 .lg{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:16px;padding:5px 10px;font-size:13px;
  max-width:100%;text-align:right}
@@ -305,22 +317,96 @@ async function route() {
   if (kind === "c" && key) return carScreen(key, +lot);
   if (kind === "p" && key) return pageScreen(key, +lot);
   if (kind === "a" && key) return pageScreen(key, null);
+  if (kind === "all") return allCarsScreen();
   return home();
 }
 
 async function home() {
-  const forms = (await allForms()).sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.added - a.added);
+  const forms = (await allForms()).sort(byWhen);
   app.innerHTML = `<div class="top"><h1>טפסי מכרז</h1></div><main>
     <div class="acts"><button class="big" id="scan">קלוט טופס מהמחשב</button><button class="big alt" id="of">פתח קובץ</button></div>
-    ${forms.length ? areaGroups(forms).map(([area, list]) =>
+    ${forms.length ? `<input class="search" id="gq" type="search" placeholder="חיפוש רכב בכל המכרזים: מספר רכב או סוג" value="${H(homeQuery)}">` : ""}
+    <div id="tiles">${forms.length ? `<button class="alltile" id="allcars"><b>🚗 כל הרכבים</b>
+      <span>${forms.reduce((n, f) => n + f.cars.length, 0)} רכבים מ-${forms.length} מכרזים · סוג, מספר וצבע ברשימה אחת</span></button>` : ""}${forms.length ? areaGroups(forms).map(([area, list]) =>
       `${areaCount > 1 || area ? `<div class="sec area-h">${area ? "📍 " + H(area) : "ללא אזור"} <span>(${list.length})</span></div>` : ""}
       <div class="grid">${list.map(tile).join("")}</div>`).join("")
-    : `<div class="empty">עדיין אין טפסים.<br>בכלי במחשב: פתח את הטופס ← <b>שלח לטלפון</b>,<br>ואז כאן: <b>קלוט טופס מהמחשב</b>.</div>`}
+    : `<div class="empty">עדיין אין טפסים.<br>בכלי במחשב: פתח את הטופס ← <b>שלח לטלפון</b>,<br>ואז כאן: <b>קלוט טופס מהמחשב</b>.</div>`}</div>
+    <div id="found"></div>
     </main>`;
   $("#scan").onclick = startScan;
   $("#of").onclick = () => $("#file").click();
   app.querySelectorAll(".tile").forEach((t) => (t.onclick = () => (location.hash = "#f/" + t.dataset.k)));
   app.querySelectorAll(".area").forEach((b) => (b.onclick = () => setArea(b.dataset.k)));
+  if (!forms.length) return;
+  $("#allcars").onclick = () => (location.hash = "#all");
+  // search all the auctions at once: typing hides the tiles and lists the matching cars with their auction
+  const find = () => {
+    const q = homeQuery.trim().toLowerCase(), qd = digits(q);
+    $("#tiles").hidden = !!q;
+    if (!q) { $("#found").innerHTML = ""; return; }
+    const hits = [];
+    for (const f of forms) for (const c of f.cars) {
+      if (carTitle(c).toLowerCase().includes(q) || (qd.length >= 2 && digits(val(c, "plate")).includes(qd))) hits.push([f, c]);
+    }
+    $("#found").innerHTML = hits.length ? `<div class="sec">נמצאו ${hits.length}</div>` + hits.slice(0, 60).map(([f, c]) =>
+      `<button class="car ${c.done ? "done" : ""}" data-k="${H(f.key)}" data-l="${c.lot}">
+        <span class="lot">${c.done ? "✓" : `<small>פריט</small>${c.lot}`}</span>
+        <span class="t"><b>${H(carTitle(c))}</b><span>${H(val(c, "plate") || "—")} · ${H(val(c, "color") || "—")}</span>
+        <span class="where">${H(f.name || "מכרז " + f.key)}${f.date ? " · " + H(dateLine(f)) : ""}${val(c, "location") ? "<br>📍 " + H(val(c, "location")) : ""}</span></span></button>`).join("")
+      : `<div class="empty">לא נמצא רכב באף מכרז</div>`;
+    $("#found").querySelectorAll(".car").forEach((b) => (b.onclick = async () => {
+      const f = await getForm(b.dataset.k), c = f && f.cars.find((x) => x.lot === +b.dataset.l);
+      location.hash = `#${c && c.done ? "p" : "c"}/${b.dataset.k}/${b.dataset.l}`;
+    }));
+  };
+  $("#gq").oninput = (e) => { homeQuery = e.target.value; find(); };
+  find();
+}
+let homeQuery = "";
+
+// All the cars of all the auctions in one short list (type, plate, color), by auction date and item number,
+// to scroll through in the field without opening each auction. Tap a car to open it.
+let allQuery = "";
+async function allCarsScreen() {
+  const forms = (await allForms()).sort(byWhen);
+  const total = forms.reduce((n, f) => n + f.cars.length, 0);
+  app.innerHTML = `<div class="top"><button class="bk" id="bk">→ טפסים</button><h1>כל הרכבים (${total})</h1></div><main>
+    <input class="search" id="aq" type="search" placeholder="סינון: מספר רכב, סוג או צבע" value="${H(allQuery)}">
+    <div id="alist"></div></main>`;
+  $("#bk").onclick = () => (location.hash = "");
+  const draw = () => {
+    const q = allQuery.trim().toLowerCase(), qd = digits(q);
+    const hit = (c) => !q || carTitle(c).toLowerCase().includes(q) || val(c, "color").toLowerCase().includes(q)
+      || (qd.length >= 2 && digits(val(c, "plate")).includes(qd));
+    const html = forms.map((f) => {
+      const cars = f.cars.filter(hit);
+      if (!cars.length) return "";
+      const places = [...new Set(f.cars.map((c) => val(c, "location").replace(/\s+/g, " ").trim()))];
+      const col = (c) => places.length > 1 ? PLACE_COLORS[places.indexOf(val(c, "location").replace(/\s+/g, " ").trim()) % PLACE_COLORS.length] : "";
+      return `<div class="ahead"><b>${H(f.name || "מכרז " + f.key)}</b><span>${H(dateLine(f))}${f.area ? " · 📍 " + H(f.area) : ""}</span></div>`
+        + cars.map((c) => `<button class="arow ${c.done ? "done" : ""}" data-k="${H(f.key)}" data-l="${c.lot}"${col(c) ? ` style="border-inline-start:5px solid ${col(c)}"` : ""}>
+          <span class="an">${c.done ? "✓" : c.lot}</span><b>${H(carTitle(c))}</b>
+          <span class="ap">${H(val(c, "plate") || "—")}</span><span class="ac">${H(val(c, "color") || "")}</span></button>`).join("");
+    }).join("");
+    $("#alist").innerHTML = html || `<div class="empty">לא נמצא רכב</div>`;
+    $("#alist").querySelectorAll(".arow").forEach((b) => (b.onclick = async () => {
+      const f = await getForm(b.dataset.k), c = f && f.cars.find((x) => x.lot === +b.dataset.l);
+      location.hash = `#${c && c.done ? "p" : "c"}/${b.dataset.k}/${b.dataset.l}`;
+    }));
+  };
+  $("#aq").oninput = (e) => { allQuery = e.target.value; draw(); };
+  draw();
+}
+
+// Tiles from the nearest auction (first, on the right) to the farthest: by date, then by hour.
+// Auctions already held go after the coming ones, the most recent of them first.
+function byWhen(a, b) {
+  const today = new Date().toISOString().slice(0, 10);
+  const when = (f) => `${f.date || "9999-99-99"} ${f.time || "99:99"}`;
+  const past = (f) => (f.date && f.date < today ? 1 : 0);
+  return past(a) - past(b)
+    || (past(a) ? when(b).localeCompare(when(a)) : when(a).localeCompare(when(b)))
+    || a.added - b.added;
 }
 
 const PLACE_COLORS = ["#2563eb", "#ea580c", "#16a34a", "#9333ea", "#db2777", "#0891b2", "#a16207", "#475569"];

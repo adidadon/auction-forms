@@ -1,7 +1,7 @@
 // Keeps the app on the phone so it opens without reception.
 // The page itself: the newest version from the site when there is reception (up to 4 seconds), otherwise the saved copy.
 // Other files: the saved copy at once, refreshed in the background.
-const CACHE = "auction-forms-v5";
+const CACHE = "auction-forms-v8";
 const FILES = ["./", "index.html", "vendor/jsQR.js", "manifest.webmanifest", "icon-180.png", "icon-512.png"];
 self.addEventListener("install", (e) => e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())));
 self.addEventListener("activate", (e) => e.waitUntil(caches.keys()
