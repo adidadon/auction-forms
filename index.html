@@ -327,9 +327,8 @@ async function home() {
     <div class="acts"><button class="big" id="scan">קלוט טופס מהמחשב</button><button class="big alt" id="of">פתח קובץ</button></div>
     ${forms.length ? `<input class="search" id="gq" type="search" placeholder="חיפוש רכב בכל המכרזים: מספר רכב או סוג" value="${H(homeQuery)}">` : ""}
     <div id="tiles">${forms.length ? `<button class="alltile" id="allcars"><b>🚗 כל הרכבים</b>
-      <span>${forms.reduce((n, f) => n + f.cars.length, 0)} רכבים מ-${forms.length} מכרזים · סוג, מספר וצבע ברשימה אחת</span></button>` : ""}${forms.length ? areaGroups(forms).map(([area, list]) =>
-      `${areaCount > 1 || area ? `<div class="sec area-h">${area ? "📍 " + H(area) : "ללא אזור"} <span>(${list.length})</span></div>` : ""}
-      <div class="grid">${list.map(tile).join("")}</div>`).join("")
+      <span>${forms.reduce((n, f) => n + f.cars.length, 0)} רכבים מ-${forms.length} מכרזים · סוג, מספר וצבע ברשימה אחת</span></button>` : ""}${forms.length
+      ? `<div class="grid">${forms.map(tile).join("")}</div>`     // one grid by date; the area is the label under each tile
     : `<div class="empty">עדיין אין טפסים.<br>בכלי במחשב: פתח את הטופס ← <b>שלח לטלפון</b>,<br>ואז כאן: <b>קלוט טופס מהמחשב</b>.</div>`}</div>
     <div id="found"></div>
     </main>`;
@@ -411,19 +410,7 @@ function byWhen(a, b) {
 
 const PLACE_COLORS = ["#2563eb", "#ea580c", "#16a34a", "#9333ea", "#db2777", "#0891b2", "#a16207", "#475569"];
 
-// ---------------------------------------------------------------- areas: the user's own label per auction, to group the tiles
-let areaCount = 0;
-function areaGroups(forms) {
-  const groups = new Map();
-  for (const f of forms) {
-    const a = (f.area || "").trim();
-    if (!groups.has(a)) groups.set(a, []);
-    groups.get(a).push(f);
-  }
-  areaCount = groups.size;
-  // named areas in Hebrew alphabetical order, auctions with no area last
-  return [...groups.entries()].sort(([a], [b]) => (!a) - (!b) || a.localeCompare(b, "he"));
-}
+// ---------------------------------------------------------------- areas: the user's own label per auction, shown under its tile
 function tile(f) {
   const done = f.cars.filter((c) => c.done).length;
   return `<div class="tw"><button class="tile" data-k="${H(f.key)}"><span class="h">${H(houseShort(f.house))}</span>
