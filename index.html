@@ -35,6 +35,12 @@ main{padding:14px 16px calc(env(safe-area-inset-bottom) + 96px);max-width:720px;
 .tile .c{margin-top:auto;font-size:13px;color:var(--mute)}
 .tile .bar{height:5px;border-radius:3px;background:var(--line);overflow:hidden}.tile .bar i{display:block;height:100%;background:var(--green)}
 .empty{text-align:center;color:var(--mute);padding:40px 10px}
+.tw{display:flex;flex-direction:column;gap:6px}
+.area{border:1px dashed #cbd5e1;background:transparent;color:var(--mute);border-radius:10px;padding:7px 8px;font-size:13px;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.area.on{border-style:solid;border-color:#bfdbfe;background:var(--soft);color:var(--blue);font-weight:600}
+.sec.area-h{font-size:15px;color:var(--ink);margin:18px 2px 8px}.area-h span{color:var(--mute);font-weight:400}
+.sec.area-h:first-of-type{margin-top:4px}
 .search{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;font-size:16px;margin-bottom:12px}
 .sec{font-size:13px;color:var(--mute);margin:16px 2px 6px;font-weight:600}
 .car{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;
@@ -300,18 +306,48 @@ async function home() {
   const forms = (await allForms()).sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.added - a.added);
   app.innerHTML = `<div class="top"><h1>טפסי מכרז</h1></div><main>
     <div class="acts"><button class="big" id="scan">קלוט טופס מהמחשב</button><button class="big alt" id="of">פתח קובץ</button></div>
-    ${forms.length ? `<div class="grid">${forms.map((f) => {
-      const done = f.cars.filter((c) => c.done).length;
-      return `<button class="tile" data-k="${H(f.key)}"><span class="h">${H(houseShort(f.house))}</span>
-        <span class="n">${H(f.name || "מכרז " + f.key)}</span><span class="d">${H(dateLine(f))}</span>
-        <span class="c">${f.cars.length} רכבים · ${done} נבדקו</span>
-        <span class="bar"><i style="width:${f.cars.length ? (100 * done) / f.cars.length : 0}%"></i></span></button>`;
-    }).join("")}</div>`
+    ${forms.length ? areaGroups(forms).map(([area, list]) =>
+      `${areaCount > 1 || area ? `<div class="sec area-h">${area ? "📍 " + H(area) : "ללא אזור"} <span>(${list.length})</span></div>` : ""}
+      <div class="grid">${list.map(tile).join("")}</div>`).join("")
     : `<div class="empty">עדיין אין טפסים.<br>בכלי במחשב: פתח את הטופס ← <b>שלח לטלפון</b>,<br>ואז כאן: <b>קלוט טופס מהמחשב</b>.</div>`}
     </main>`;
   $("#scan").onclick = startScan;
   $("#of").onclick = () => $("#file").click();
   app.querySelectorAll(".tile").forEach((t) => (t.onclick = () => (location.hash = "#f/" + t.dataset.k)));
+  app.querySelectorAll(".area").forEach((b) => (b.onclick = () => setArea(b.dataset.k)));
+}
+
+// ---------------------------------------------------------------- areas: the user's own label per auction, to group the tiles
+let areaCount = 0;
+function areaGroups(forms) {
+  const groups = new Map();
+  for (const f of forms) {
+    const a = (f.area || "").trim();
+    if (!groups.has(a)) groups.set(a, []);
+    groups.get(a).push(f);
+  }
+  areaCount = groups.size;
+  // named areas in Hebrew alphabetical order, auctions with no area last
+  return [...groups.entries()].sort(([a], [b]) => (!a) - (!b) || a.localeCompare(b, "he"));
+}
+function tile(f) {
+  const done = f.cars.filter((c) => c.done).length;
+  return `<div class="tw"><button class="tile" data-k="${H(f.key)}"><span class="h">${H(houseShort(f.house))}</span>
+    <span class="n">${H(f.name || "מכרז " + f.key)}</span><span class="d">${H(dateLine(f))}</span>
+    <span class="c">${f.cars.length} רכבים · ${done} נבדקו</span>
+    <span class="bar"><i style="width:${f.cars.length ? (100 * done) / f.cars.length : 0}%"></i></span></button>
+    <button class="area ${f.area ? "on" : ""}" data-k="${H(f.key)}">📍 ${f.area ? H(f.area) : "הוסף אזור"}</button></div>`;
+}
+async function setArea(key) {
+  const f = await getForm(key);
+  if (!f) return;
+  const known = [...new Set((await allForms()).map((x) => x.area).filter(Boolean))];
+  const hint = known.length ? `\nאזורים קיימים: ${known.join(", ")}` : "";
+  const v = prompt(`אזור למכרז "${f.name || f.key}" (למשל: מרכז, דרום, צפון). ריק = בלי אזור.${hint}`, f.area || "");
+  if (v === null) return;          // cancelled
+  f.area = v.replace(/\s+/g, " ").trim();
+  await putForm(f);
+  home();
 }
 
 let query = "";
