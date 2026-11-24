@@ -106,7 +106,7 @@ main{padding:14px 16px calc(env(safe-area-inset-bottom) + 96px);max-width:720px;
 .paper .pc{display:flex;align-items:flex-end;gap:4px;min-width:0}
 .paper .pb{font-weight:bold;white-space:nowrap}
 .paper .pf{flex:1 1 auto;min-width:34px;border-bottom:1px solid #000;padding:0 3px;min-height:20px;line-height:19px;white-space:nowrap}
-.paper .pf.sm{font-size:12.5px;white-space:normal;min-width:0}
+.paper .pf.sm{font-size:12.5px;white-space:pre-line;min-width:0}
 .pv-ph{margin-top:6px}
 .prog{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:0 0 10px;font-size:14px;font-weight:600}
 .hm{font-size:12px;font-weight:600;border-radius:10px;padding:2px 8px;background:#fef3c7;color:#92400e;margin-right:6px}
@@ -517,6 +517,8 @@ async function carScreen(key, lot) {
   if (!car) { location.hash = f ? "#f/" + key : ""; return; }
   const area = ([a, b, label]) => {
     if (a === "#") return `<div class="sec" style="margin-top:6px">${H(b)}</div>`;
+    // numbered steps in one box (1. ... 2. ...): keeps its lines
+    if (a === "ml") return `<label class="fld"><span>${H(label)}</span><textarea data-k="${b}" data-ml="1" rows="${Math.max(3, val(car, b).split("\n").length)}">${H(val(car, b))}</textarea></label>`;
     if (label === undefined) return `<label class="fld"><span>${H(b)}</span><textarea data-k="${a}" rows="1">${H(val(car, a))}</textarea></label>`;
     const v = [val(car, a), val(car, b)].filter(Boolean).join("\n");
     return `<label class="fld"><span>${H(label)}</span><textarea data-a="${a}" data-b="${b}" rows="2">${H(v)}</textarea></label>`;
@@ -545,7 +547,9 @@ async function carScreen(key, lot) {
       const first = lines.shift() || "", rest = lines.filter(Boolean).join(" ");
       setMine(car, t.dataset.a, first); setMine(car, t.dataset.b, rest);
     });
-    app.querySelectorAll("[data-k]").forEach((i) => setMine(car, i.dataset.k, i.value.replace(/\s+/g, " ").trim()));
+    app.querySelectorAll("[data-k]").forEach((i) => setMine(car, i.dataset.k, i.dataset.ml
+      ? i.value.split("\n").map((x) => x.replace(/[ \t]+/g, " ").trim()).join("\n").trim()
+      : i.value.replace(/\s+/g, " ").trim()));
     if (L.sum) {   // e.g. the expenses: the total follows its parts
       const t = L.sum.from.reduce((n, k) => n + money(val(car, k)), 0);
       setMine(car, L.sum.to, t ? t.toLocaleString("en-US") : "");
@@ -596,7 +600,7 @@ function viewPhoto(src, id, after) {
 }
 
 // ---------------------------------------------------------------- the paper page: the same lines as the printed form
-const LONG = new Set(["rank", "sold_km", "fees", "notes", "notes2", "location", "lawyer", "checks", "tires", "invest", "ownership"]);
+const LONG = new Set(["rank", "sold_km", "fees", "notes", "notes2", "location", "lawyer", "checks", "tires", "invest", "ownership", "inspect_all", "exp_all", "faults"]);
 function paperBlock(f, car) {
   return `<div class="paper"><div class="tag">${lay(f).unit} ${no(f, car)}</div>${lay(f).print.map((line) =>
     // each label + field stays together; a crowded line wraps on the phone instead of breaking words
@@ -642,7 +646,7 @@ function paperImage(f, car) {
     let right = W - PAD, rows = 1;
     const cells = line.map(([k, label, w], i) => {
       const fw = free * (w === "*" ? 1 : w) / total;
-      const cell = { label, lx: right, fx: right - labels[i], fw, text: val(car, k) };
+      const cell = { label, lx: right, fx: right - labels[i], fw, text: val(car, k).replace(/\n/g, "   ") };
       right -= labels[i] + fw + GAP;
       // shrink a little, then wrap: one field may take a few lines
       x.font = `${FONT}px Arial`;
