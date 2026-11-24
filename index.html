@@ -148,6 +148,12 @@ const PRINT_LINES = [
   [["visual", "*ויזו-מכסה ס/פ", "*"]], [["visual2", "•", "*"]], [["md", "*מד", "*"]], [["md2", "•", "*"]],
   [["ab", "•ע.ב.", "*"]], [["ab2", "", "*"]], [["rank", "דירוג", "*"]], [["sold_km", "ק\"מ בשוק", "*"]],
   [["notes", "הערות", "*"]], [["notes2", "•", "*"]], [["fees", "אגרות", "*"]]];
+// A leasing list (or any other kind of form) brings its own lines from the computer: no app update needed for them.
+const lay = (f) => ({ unit: "פריט", inspect: INSPECT, details: DETAILS, tool: TOOL, print: PRINT_LINES, ...((f && f.layout) || {}) });
+const isLease = (f) => f && f.kind === "lease";
+// the number shown on a car: the item number in an auction, the place in the ranking in a leasing list
+const no = (f, c) => (isLease(f) ? c.base.place ?? "" : c.lot);
+const TIER = { go: "✅ כדאי", check: "🔍 לבדוק", skip: "לא כדאי" };
 
 // ---------------------------------------------------------------- storage on the phone (IndexedDB: forms and photos)
 let DB;
@@ -219,6 +225,8 @@ async function importForm(d) {
   const old = await getForm(d.key);
   const f = old || { key: d.key, added: Date.now(), cars: [] };
   Object.assign(f, { house: d.house || f.house || "", name: d.name || f.name || "", date: d.date || f.date || "", time: d.time || f.time || "" });
+  if (d.kind) f.kind = d.kind;
+  if (d.layout) f.layout = d.layout;
   let added = 0;
   for (const c of d.cars) {
     const base = { ...c }; delete base.lot;
@@ -226,7 +234,8 @@ async function importForm(d) {
     if (have) have.base = base;
     else { f.cars.push({ lot: c.lot, base, mine: {}, done: false }); added++; }
   }
-  f.cars.sort((a, b) => a.lot - b.lot);
+  if (isLease(f)) f.cars.sort((a, b) => (a.base.place ?? 1e9) - (b.base.place ?? 1e9));
+  else f.cars.sort((a, b) => a.lot - b.lot);
   await putForm(f);
   toast(old ? `הטופס עודכן: ${d.cars.length} רכבים${added ? `, ${added} חדשים` : ""}` : `נקלט טופס עם ${d.cars.length} רכבים`);
   location.hash = "#f/" + f.key;
@@ -349,7 +358,7 @@ async function home() {
     }
     $("#found").innerHTML = hits.length ? `<div class="sec">נמצאו ${hits.length}</div>` + hits.slice(0, 60).map(([f, c]) =>
       `<button class="car ${c.done ? "done" : ""}" data-k="${H(f.key)}" data-l="${c.lot}">
-        <span class="lot">${c.done ? "✓" : `<small>פריט</small>${c.lot}`}</span>
+        <span class="lot">${c.done ? "✓" : `<small>${lay(f).unit}</small>${no(f, c)}`}</span>
         <span class="t"><b>${H(carTitle(c))}</b><span>${H(val(c, "plate") || "—")} · ${H(val(c, "color") || "—")}</span>
         <span class="where">${H(f.name || "מכרז " + f.key)}${f.date ? " · " + H(dateLine(f)) : ""}${val(c, "location") ? "<br>📍 " + H(val(c, "location")) : ""}</span></span></button>`).join("")
       : `<div class="empty">לא נמצא רכב באף מכרז</div>`;
@@ -384,7 +393,7 @@ async function allCarsScreen() {
       const col = (c) => places.length > 1 ? PLACE_COLORS[places.indexOf(val(c, "location").replace(/\s+/g, " ").trim()) % PLACE_COLORS.length] : "";
       return `<div class="ahead"><b>${H(f.name || "מכרז " + f.key)}</b><span>${H(dateLine(f))}${f.area ? " · 📍 " + H(f.area) : ""}</span></div>`
         + cars.map((c) => `<button class="arow ${c.done ? "done" : ""}" data-k="${H(f.key)}" data-l="${c.lot}"${col(c) ? ` style="border-inline-start:5px solid ${col(c)}"` : ""}>
-          <span class="an">${c.done ? "✓" : c.lot}</span><b>${H(carTitle(c))}</b>
+          <span class="an">${c.done ? "✓" : no(f, c)}</span><b>${H(carTitle(c))}</b>
           <span class="ap">${H(val(c, "plate") || "—")}</span><span class="ac">${H(val(c, "color") || "")}</span></button>`).join("");
     }).join("");
     $("#alist").innerHTML = html || `<div class="empty">לא נמצא רכב</div>`;
@@ -441,7 +450,7 @@ async function formScreen(key) {
     <button class="mn" id="pr">הדפס</button></div><main>
     <div class="muted" style="color:var(--mute);font-size:14px;margin:-2px 2px 10px">${H(houseShort(f.house))} · ${H(dateLine(f))}</div>
     <div class="seg"><button id="all">📄 הטופס המלא (כמו בדף)</button></div>
-    <input class="search" id="q" type="search" placeholder="חיפוש לפי מספר רכב, סוג או פריט" value="${H(query)}">
+    <input class="search" id="q" type="search" placeholder="חיפוש לפי מספר רכב, סוג או ${isLease(f) ? "מקום" : "פריט"}" value="${H(query)}">
     <div id="list"></div>
     <button class="lnk danger" id="del">מחק את הטופס מהטלפון</button></main>`;
   // cars of one auction often stand in different lots: each place gets a heading and its own color strip
@@ -453,12 +462,12 @@ async function formScreen(key) {
   // the whole row in a light shade of its place's color (text stays readable), with a strong strip at the side
   const tint = (p) => { const col = colorOf(p); return `background:${col}24;border-color:${col}66;border-inline-start:7px solid ${col}`; };
   const row = (c) => `<button class="car ${c.done ? "done" : ""}" data-l="${c.lot}"${multi ? ` style="${tint(placeOf(c))}"` : ""}>
-      <span class="lot">${c.done ? "✓" : `<small>פריט</small>${c.lot}`}</span>
-      <span class="t"><b>${H(carTitle(c))}</b><span>${H(val(c, "plate") || "—")} · ${H(val(c, "color") || "—")}${val(c, "year") ? " · " + H(val(c, "year")) : ""}${c.done ? " · פריט " + c.lot : ""}</span></span>
+      <span class="lot">${c.done ? "✓" : `<small>${lay(f).unit}</small>${no(f, c)}`}</span>
+      <span class="t"><b>${H(carTitle(c))}</b><span>${H(val(c, "plate") || "—")} · ${H(val(c, "color") || "—")}${val(c, "year") ? " · " + H(val(c, "year")) : ""}${isLease(f) && val(c, "km") ? " · " + H(val(c, "km")) + " ק\"מ" : ""}${c.done ? ` · ${lay(f).unit} ` + no(f, c) : ""}</span>${isLease(f) && c.base.tier ? `<span class="where">${TIER[c.base.tier] || ""}</span>` : ""}</span>
       ${counts[c.lot] ? `<span class="ph">📷 ${counts[c.lot]}</span>` : ""}</button>`;
   const draw = () => {
     const q = query.trim().toLowerCase(), qd = digits(q);
-    const hit = (c) => !q || carTitle(c).toLowerCase().includes(q) || (qd && digits(val(c, "plate")).includes(qd)) || String(c.lot) === q
+    const hit = (c) => !q || carTitle(c).toLowerCase().includes(q) || (qd && digits(val(c, "plate")).includes(qd)) || String(no(f, c)) === q
       || placeOf(c).toLowerCase().includes(q);
     // the auction's order (item numbers) stays; places differ only by the color strip and the legend above
     const inPlace = (c) => !onlyPlace || placeOf(c) === onlyPlace;
@@ -498,18 +507,20 @@ async function carScreen(key, lot) {
   const car = f && f.cars.find((c) => c.lot === lot);
   if (!car) { location.hash = f ? "#f/" + key : ""; return; }
   const area = ([a, b, label]) => {
+    if (label === undefined) return `<label class="fld"><span>${H(b)}</span><textarea data-k="${a}" rows="1">${H(val(car, a))}</textarea></label>`;
     const v = [val(car, a), val(car, b)].filter(Boolean).join("\n");
     return `<label class="fld"><span>${H(label)}</span><textarea data-a="${a}" data-b="${b}" rows="2">${H(v)}</textarea></label>`;
   };
   const input = ([k, label, w]) => `<label class="fld ${w === 2 ? "w2" : ""}"><span>${H(label)}</span><input data-k="${k}" value="${H(val(car, k))}"></label>`;
-  const tool = TOOL.map(([k, label]) => `<label class="fld"><span>${H(label)}</span><textarea data-k="${k}" rows="2">${H(val(car, k))}</textarea></label>`).join("");
-  app.innerHTML = `<div class="top"><button class="bk" id="bk">→ רשימה</button><h1>פריט ${lot} · ${H(carTitle(car))}</h1></div><main>
+  const L = lay(f);
+  const tool = L.tool.map(([k, label]) => `<label class="fld"><span>${H(label)}</span><textarea data-k="${k}" rows="2">${H(val(car, k))}</textarea></label>`).join("");
+  app.innerHTML = `<div class="top"><button class="bk" id="bk">→ רשימה</button><h1>${L.unit} ${no(f, car)} · ${H(carTitle(car))}</h1></div><main>
     <div class="card"><div class="info"><b>${H(val(car, "plate") || "—")}</b> · ${H(val(car, "color") || "")} · ${H(val(car, "year") || "")}
       · יד ${H(val(car, "hand") || "—")} · ${H(val(car, "km") ? val(car, "km") + " ק\"מ" : "")}<br>
       <span style="color:var(--mute)">${H(val(car, "fees"))}</span></div></div>
-    <div class="card"><h3>בדיקה בשטח</h3>${INSPECT.map(area).join("")}
+    <div class="card"><h3>בדיקה בשטח</h3>${L.inspect.map(area).join("")}
       <div class="sec" style="margin-top:4px">תמונות</div><div class="photos" id="photos"></div></div>
-    <div class="card"><h3>פרטי הרכב</h3><div class="two">${DETAILS.map(input).join("")}</div></div>
+    <div class="card"><h3>פרטי הרכב</h3><div class="two">${L.details.map(input).join("")}</div></div>
     <div class="card"><h3>מידע מהכלי</h3>${tool}</div>
     ${car.done ? `<button class="lnk" id="undo">החזר לרשימה (סמן כלא נבדק)</button>` : ""}
     </main>
@@ -527,7 +538,7 @@ async function carScreen(key, lot) {
   const save = async () => { clearTimeout(saveTimer); collect(); await putForm(f); };
   app.querySelector("main").addEventListener("input", () => { clearTimeout(saveTimer); saveTimer = setTimeout(save, 500); });
   $("#bk").onclick = async () => { await save(); location.hash = "#f/" + key; };
-  $("#ok").onclick = async () => { car.done = true; car.doneAt = Date.now(); await save(); toast(`פריט ${lot} נשמר ✓`, 1600); location.hash = `#p/${key}/${lot}`; };
+  $("#ok").onclick = async () => { car.done = true; car.doneAt = Date.now(); await save(); toast(`${L.unit} ${no(f, car)} נשמר ✓`, 1600); location.hash = `#p/${key}/${lot}`; };
   if ($("#undo")) $("#undo").onclick = async () => { car.done = false; await save(); location.hash = "#f/" + key; };
   $("#sh").onclick = async () => { await save(); shareCar(f, car); };
 
@@ -563,9 +574,9 @@ function viewPhoto(src, id, after) {
 }
 
 // ---------------------------------------------------------------- the paper page: the same lines as the printed form
-const LONG = new Set(["rank", "sold_km", "fees", "notes", "notes2", "location", "lawyer"]);
-function paperBlock(car) {
-  return `<div class="paper"><div class="tag">פריט ${car.lot}</div>${PRINT_LINES.map((line) =>
+const LONG = new Set(["rank", "sold_km", "fees", "notes", "notes2", "location", "lawyer", "checks", "tires", "invest", "ownership"]);
+function paperBlock(f, car) {
+  return `<div class="paper"><div class="tag">${lay(f).unit} ${no(f, car)}</div>${lay(f).print.map((line) =>
     // each label + field stays together; a crowded line wraps on the phone instead of breaking words
     `<div class="pl">${line.map(([k, label, w]) => `<span class="pc" style="flex:${w === "*" ? 1 : w} 1 auto">`
       + `${label ? `<span class="pb">${H(label)}</span>` : ""}`
@@ -580,8 +591,8 @@ async function pageScreen(key, lot) {
   if (one && !car) { location.hash = "#f/" + key; return; }
   const cars = one ? [car] : f.cars;
   app.innerHTML = `<div class="top"><button class="bk" id="bk">→ רשימה</button>
-    <h1>${one ? `פריט ${lot}${car.done ? " ✓" : ""}` : "הטופס המלא"}</h1>${one ? "" : `<button class="mn" id="pr">הדפס</button>`}</div><main>
-    ${cars.map(paperBlock).join("")}
+    <h1>${one ? `${lay(f).unit} ${no(f, car)}${car.done ? " ✓" : ""}` : "הטופס המלא"}</h1>${one ? "" : `<button class="mn" id="pr">הדפס</button>`}</div><main>
+    ${cars.map((c) => paperBlock(f, c)).join("")}
     ${one ? `<div class="sec">תמונות</div><div class="photos pv-ph" id="photos"></div>` : ""}</main>
     ${one ? `<div class="foot"><button id="ed">✎ ערוך</button><button id="sh">שתף</button><button class="ok" id="bk2">→ רשימה</button></div>` : ""}`;
   $("#bk").onclick = () => (location.hash = "#f/" + key);
@@ -602,7 +613,7 @@ function paperImage(f, car) {
   const lay = [];
   let y = PAD + 30;
   x.font = `bold ${FONT}px Arial`;
-  for (const line of PRINT_LINES) {
+  for (const line of lay(f).print) {
     const labels = line.map(([, label]) => (label ? x.measureText(label).width + GAP : 0));
     const free = W - 2 * PAD - labels.reduce((a, b) => a + b, 0) - GAP * (line.length - 1);
     const total = line.reduce((a, [, , w]) => a + (w === "*" ? 1 : w), 0);
@@ -627,7 +638,7 @@ function paperImage(f, car) {
   x.fillStyle = "#fff"; x.fillRect(0, 0, W, c.height);
   x.direction = "rtl"; x.textBaseline = "alphabetic";
   x.fillStyle = "#6b7280"; x.font = `22px Arial`; x.textAlign = "left";
-  x.fillText(`פריט ${car.lot} · ${f.name || "מכרז " + f.key}${f.date ? " · " + dateLine(f) : ""}`, PAD, PAD);
+  x.fillText(`${lay(f).unit} ${no(f, car)} · ${f.name || "מכרז " + f.key}${f.date ? " · " + dateLine(f) : ""}`, PAD, PAD);
   for (const { y: top, cells, rows } of lay) {
     for (const cell of cells) {
       x.fillStyle = "#000"; x.textAlign = "right";
@@ -653,18 +664,22 @@ function wrap(x, text, width) {
 
 // ---------------------------------------------------------------- sharing (WhatsApp and the rest, through the phone's share menu)
 function carText(f, car) {
-  const L = [`*פריט ${car.lot} · ${carTitle(car)}*`, `${f.name || "מכרז " + f.key}${f.date ? " · " + dateLine(f) : ""}`];
+  const L = [`*${lay(f).unit} ${no(f, car)} · ${carTitle(car)}*`, `${f.name || "מכרז " + f.key}${f.date ? " · " + dateLine(f) : ""}`];
   const kv = (label, k) => { const v = val(car, k); if (v) L.push(`${label}: ${v}`); };
   kv("מס רכב", "plate"); kv("צבע", "color"); kv("שנה", "year"); kv("יד", "hand"); kv("קו", "ownership"); kv("ק\"מ", "km");
-  INSPECT.forEach(([a, b, label]) => { const v = [val(car, a), val(car, b)].filter(Boolean).join(" "); if (v) L.push(`${label}: ${v}`); });
+  lay(f).inspect.forEach(([a, b, label]) => {
+    if (label === undefined) { const v = val(car, a); if (v) L.push(`${b}: ${v}`); return; }
+    const v = [val(car, a), val(car, b)].filter(Boolean).join(" "); if (v) L.push(`${label}: ${v}`);
+  });
+  if (isLease(f)) kv("מחירון", "price");
   kv("שוק", "market"); kv("משוקלל", "weighted"); kv("משוקלל מ", "weighted_from"); kv("אגרות", "fees"); kv("מיקום", "location");
   return L.join("\n");
 }
 async function shareCar(f, car) {
   const text = carText(f, car);
   const ph = await carPhotos(f.key, car.lot);
-  const files = ph.map((p, i) => new File([p.blob], `פריט${car.lot}_${i + 1}.jpg`, { type: "image/jpeg" }));
-  try { files.unshift(new File([await paperImage(f, car)], `פריט${car.lot}_טופס.png`, { type: "image/png" })); } catch (e) { /* text only */ }
+  const files = ph.map((p, i) => new File([p.blob], `${lay(f).unit}${no(f, car)}_${i + 1}.jpg`, { type: "image/jpeg" }));
+  try { files.unshift(new File([await paperImage(f, car)], `${lay(f).unit}${no(f, car)}_טופס.png`, { type: "image/png" })); } catch (e) { /* text only */ }
   try {
     if (files.length && navigator.canShare && navigator.canShare({ files })) return await navigator.share({ files, text });
     if (navigator.share) return await navigator.share({ text });
@@ -674,7 +689,7 @@ async function shareCar(f, car) {
 
 // ---------------------------------------------------------------- print / PDF: the same A4 page as the tool, 3 cars a page
 function printForm(f) {
-  const blocks = f.cars.map((car) => `<div class="blk"><div class="tag">פריט ${car.lot}</div>${PRINT_LINES.map((line) =>
+  const blocks = f.cars.map((car) => `<div class="blk"><div class="tag">${lay(f).unit} ${no(f, car)}</div>${lay(f).print.map((line) =>
     `<div class="ln">${line.map(([k, label, w]) => `${label ? `<span class="lb">${H(label)}</span>` : ""}<span class="f" style="flex:${w === "*" ? 1 : w} 1 0">${H(val(car, k))}</span>`).join("")}</div>`).join("")}</div>`);
   let html = "";
   for (let i = 0; i < blocks.length; i += 3) html += `<div class="page">${blocks.slice(i, i + 3).join("")}</div>`;
