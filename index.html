@@ -108,6 +108,11 @@ main{padding:14px 16px calc(env(safe-area-inset-bottom) + 96px);max-width:720px;
 .paper .pf{flex:1 1 auto;min-width:34px;border-bottom:1px solid #000;padding:0 3px;min-height:20px;line-height:19px;white-space:nowrap}
 .paper .pf.sm{font-size:12.5px;white-space:normal;min-width:0}
 .pv-ph{margin-top:6px}
+.prog{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:0 0 10px;font-size:14px;font-weight:600}
+.hm{font-size:12px;font-weight:600;border-radius:10px;padding:2px 8px;background:#fef3c7;color:#92400e;margin-right:6px}
+.hm.ok{background:#dcfce7;color:var(--green)}.homec{border-color:#bfdbfe}
+.cpy{border:1px solid #bfdbfe;background:var(--soft);color:var(--blue);border-radius:8px;padding:4px 10px;font-size:14px;font-weight:600;margin:0 4px}
+.cpy.ok{background:#dcfce7;border-color:#86efac;color:var(--green)}
 .seg{display:flex;gap:8px;margin:0 0 12px}
 .seg button{flex:1;border:1px solid #bfdbfe;background:#fff;color:var(--blue);border-radius:10px;padding:9px;font-weight:600}
 #print{display:none}
@@ -154,6 +159,8 @@ const isLease = (f) => f && f.kind === "lease";
 // the number shown on a car: the item number in an auction, the place in the ranking in a leasing list
 const no = (f, c) => (isLease(f) ? c.base.place ?? "" : c.lot);
 const TIER = { go: "✅ כדאי", check: "🔍 לבדוק", skip: "לא כדאי" };
+// the part done at home (a leasing list: Levi, weighted, market) is filled for this car
+const homeDone = (f, c) => !!(lay(f).home && lay(f).home.every((k) => val(c, k).trim()));
 
 // ---------------------------------------------------------------- storage on the phone (IndexedDB: forms and photos)
 let DB;
@@ -463,7 +470,7 @@ async function formScreen(key) {
   const tint = (p) => { const col = colorOf(p); return `background:${col}24;border-color:${col}66;border-inline-start:7px solid ${col}`; };
   const row = (c) => `<button class="car ${c.done ? "done" : ""}" data-l="${c.lot}"${multi ? ` style="${tint(placeOf(c))}"` : ""}>
       <span class="lot">${c.done ? "✓" : `<small>${lay(f).unit}</small>${no(f, c)}`}</span>
-      <span class="t"><b>${H(carTitle(c))}</b><span>${H(val(c, "plate") || "—")} · ${H(val(c, "color") || "—")}${val(c, "year") ? " · " + H(val(c, "year")) : ""}${isLease(f) && val(c, "km") ? " · " + H(val(c, "km")) + " ק\"מ" : ""}${c.done ? ` · ${lay(f).unit} ` + no(f, c) : ""}</span>${isLease(f) && c.base.tier ? `<span class="where">${TIER[c.base.tier] || ""}</span>` : ""}</span>
+      <span class="t"><b>${H(carTitle(c))}</b><span>${H(val(c, "plate") || "—")} · ${H(val(c, "color") || "—")}${val(c, "year") ? " · " + H(val(c, "year")) : ""}${isLease(f) && val(c, "km") ? " · " + H(val(c, "km")) + " ק\"מ" : ""}${c.done ? ` · ${lay(f).unit} ` + no(f, c) : ""}</span>${isLease(f) ? `<span class="where">${TIER[c.base.tier] || ""}${lay(f).home ? ` · ${homeDone(f, c) ? "🏠 ✓" : "🏠 חסר"}` : ""}</span>` : ""}</span>
       ${counts[c.lot] ? `<span class="ph">📷 ${counts[c.lot]}</span>` : ""}</button>`;
   const draw = () => {
     const q = query.trim().toLowerCase(), qd = digits(q);
@@ -477,7 +484,9 @@ async function formScreen(key) {
         + `${H(p || "מיקום לא ידוע")} <span>${done}/${all.length}</span></button>`;
     }).join("")}</div>` : "";
     const open = f.cars.filter((c) => !c.done && hit(c) && inPlace(c)), done = f.cars.filter((c) => c.done && hit(c) && inPlace(c));
-    $("#list").innerHTML = legend
+    const prog = isLease(f) && lay(f).home ? `<div class="prog">🏠 בית: ${f.cars.filter((c) => homeDone(f, c)).length} מתוך ${f.cars.length}`
+      + ` · 🚗 שטח: ${f.cars.filter((c) => c.done).length} מתוך ${f.cars.length}</div>` : "";
+    $("#list").innerHTML = prog + legend
       + (open.length ? open.map(row).join("") : `<div class="empty">${q || onlyPlace ? "לא נמצא רכב" : "כל הרכבים נבדקו ✓"}</div>`)
       + (done.length ? `<div class="sec">נבדקו (${done.length})</div>${done.map(row).join("")}` : "");
     $("#list").querySelectorAll(".lg").forEach((b) => (b.onclick = () => {
@@ -507,6 +516,7 @@ async function carScreen(key, lot) {
   const car = f && f.cars.find((c) => c.lot === lot);
   if (!car) { location.hash = f ? "#f/" + key : ""; return; }
   const area = ([a, b, label]) => {
+    if (a === "#") return `<div class="sec" style="margin-top:6px">${H(b)}</div>`;
     if (label === undefined) return `<label class="fld"><span>${H(b)}</span><textarea data-k="${a}" rows="1">${H(val(car, a))}</textarea></label>`;
     const v = [val(car, a), val(car, b)].filter(Boolean).join("\n");
     return `<label class="fld"><span>${H(label)}</span><textarea data-a="${a}" data-b="${b}" rows="2">${H(v)}</textarea></label>`;
@@ -515,13 +525,16 @@ async function carScreen(key, lot) {
   const L = lay(f);
   const tool = L.tool.map(([k, label]) => `<label class="fld"><span>${H(label)}</span><textarea data-k="${k}" rows="2">${H(val(car, k))}</textarea></label>`).join("");
   app.innerHTML = `<div class="top"><button class="bk" id="bk">→ רשימה</button><h1>${L.unit} ${no(f, car)} · ${H(carTitle(car))}</h1></div><main>
-    <div class="card"><div class="info"><b>${H(val(car, "plate") || "—")}</b> · ${H(val(car, "color") || "")} · ${H(val(car, "year") || "")}
+    <div class="card"><div class="info"><b>${H(val(car, "plate") || "—")}</b>${val(car, "plate") ? ` <button class="cpy" data-copy="${H(val(car, "plate"))}">📋 העתק</button>` : ""} · ${H(val(car, "color") || "")} · ${H(val(car, "year") || "")}
       · יד ${H(val(car, "hand") || "—")} · ${H(val(car, "km") ? val(car, "km") + " ק\"מ" : "")}<br>
       <span style="color:var(--mute)">${H(val(car, "fees"))}</span></div></div>
-    <div class="card"><h3>בדיקה בשטח</h3>${L.inspect.map(area).join("")}
+    ${L.cards ? L.cards.map((cd) => `<div class="card${cd.home ? " homec" : ""}"><h3>${H(cd.title)}${cd.home ? ` <span class="hm${homeDone(f, car) ? " ok" : ""}" id="hm">${homeDone(f, car) ? "✓ הושלם" : "חסר"}</span>` : ""}</h3>`
+        + (cd.grid ? `<div class="two">${cd.fields.map(input).join("")}</div>` : cd.fields.map(area).join(""))
+        + (cd.photos ? `<div class="sec" style="margin-top:4px">תמונות</div><div class="photos" id="photos"></div>` : "") + `</div>`).join("")
+    : `<div class="card"><h3>בדיקה בשטח</h3>${L.inspect.map(area).join("")}
       <div class="sec" style="margin-top:4px">תמונות</div><div class="photos" id="photos"></div></div>
     <div class="card"><h3>פרטי הרכב</h3><div class="two">${L.details.map(input).join("")}</div></div>
-    <div class="card"><h3>מידע מהכלי</h3>${tool}</div>
+    <div class="card"><h3>מידע מהכלי</h3>${tool}</div>`}
     ${car.done ? `<button class="lnk" id="undo">החזר לרשימה (סמן כלא נבדק)</button>` : ""}
     </main>
     <div class="foot"><button id="ph">📷 צלם</button><button id="sh">שתף</button><button class="ok" id="ok">✓ אישור</button></div>`;
@@ -533,6 +546,13 @@ async function carScreen(key, lot) {
       setMine(car, t.dataset.a, first); setMine(car, t.dataset.b, rest);
     });
     app.querySelectorAll("[data-k]").forEach((i) => setMine(car, i.dataset.k, i.value.replace(/\s+/g, " ").trim()));
+    if (L.sum) {   // e.g. the expenses: the total follows its parts
+      const t = L.sum.from.reduce((n, k) => n + money(val(car, k)), 0);
+      setMine(car, L.sum.to, t ? t.toLocaleString("en-US") : "");
+      const box = app.querySelector(`[data-k="${L.sum.to}"]`);
+      if (box && document.activeElement !== box) box.value = val(car, L.sum.to);
+    }
+    if ($("#hm")) { $("#hm").textContent = homeDone(f, car) ? "✓ הושלם" : "חסר"; $("#hm").classList.toggle("ok", homeDone(f, car)); }
     car.updated = Date.now();
   };
   const save = async () => { clearTimeout(saveTimer); collect(); await putForm(f); };
@@ -560,6 +580,8 @@ async function carScreen(key, lot) {
   };
   drawPhotos();
 }
+// amounts written in a field: "דלת 1,500 כנף 700" -> 2200; small numbers (2 tires) are counts, not money
+const money = (t) => (String(t || "").match(/\d[\d,]*/g) || []).map((n) => +n.replace(/,/g, "")).filter((n) => n >= 50).reduce((a, b) => a + b, 0);
 function setMine(car, k, v) {
   if (v === (car.base[k] ?? "") + "") delete car.mine[k];   // same as the tool wrote: nothing to keep
   else car.mine[k] = v;
@@ -664,6 +686,19 @@ function wrap(x, text, width) {
 
 // ---------------------------------------------------------------- sharing (WhatsApp and the rest, through the phone's share menu)
 function carText(f, car) {
+  if (lay(f).share === "print") {   // every filled line of the form, in its order (a leasing list ends with the questions)
+    const out = [`*${lay(f).unit} ${no(f, car)} · ${carTitle(car)}*`, `${f.name || ""}${f.date ? " · " + dateLine(f) : ""}`];
+    for (const line of lay(f).print) for (const [k, label] of line) {
+      const v = val(car, k);
+      const ask = (lay(f).always || []).includes(k);         // a question for the seller stays even when empty
+      if ((!v && !ask) || k === "type") continue;
+      let name = String(label || "•").replace(/^[*•]+/, "");
+      const head = /^(.+?): (.+)$/.exec(name);                // "הוצאות: צבע" -> a heading line, then "צבע"
+      if (head) { out.push(`*${head[1]}*`); name = head[2]; }
+      out.push(v ? `${name}: ${v}` : `${name} `);
+    }
+    return out.join("\n");
+  }
   const L = [`*${lay(f).unit} ${no(f, car)} · ${carTitle(car)}*`, `${f.name || "מכרז " + f.key}${f.date ? " · " + dateLine(f) : ""}`];
   const kv = (label, k) => { const v = val(car, k); if (v) L.push(`${label}: ${v}`); };
   kv("מס רכב", "plate"); kv("צבע", "color"); kv("שנה", "year"); kv("יד", "hand"); kv("קו", "ownership"); kv("ק\"מ", "km");
@@ -709,6 +744,19 @@ function printForm(f) {
 }
 
 // ---------------------------------------------------------------- start
+// copy a plate number (to look up its price in the price guide): a tap on "העתק" anywhere in the app
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-copy]");
+  if (!b) return;
+  e.preventDefault(); e.stopPropagation();
+  try { await navigator.clipboard.writeText(b.dataset.copy); }
+  catch (err) {
+    const t = document.createElement("textarea"); t.value = b.dataset.copy; t.setAttribute("readonly", "");
+    document.body.appendChild(t); t.select(); t.setSelectionRange(0, 99); document.execCommand("copy"); t.remove();
+  }
+  b.textContent = "✓ הועתק"; b.classList.add("ok");
+  setTimeout(() => { b.textContent = "📋 העתק"; b.classList.remove("ok"); }, 1500);
+}, true);
 $("#file").onchange = (e) => { const file = e.target.files[0]; e.target.value = ""; if (file) openFile(file); };
 addEventListener("hashchange", route);
 (async () => {
