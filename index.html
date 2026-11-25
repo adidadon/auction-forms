@@ -108,6 +108,7 @@ main{padding:14px 16px calc(env(safe-area-inset-bottom) + 96px);max-width:720px;
 .paper .pf{flex:1 1 auto;min-width:34px;border-bottom:1px solid #000;padding:0 3px;min-height:20px;line-height:19px;white-space:nowrap}
 .paper .pf.sm{font-size:12.5px;white-space:pre-line;min-width:0}
 .pv-ph{margin-top:6px}
+.outs{margin-top:14px}.outs>summary{color:var(--mute);font-size:14px;padding:6px 2px;cursor:pointer}.outs .car{opacity:.55}
 .prog{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:0 0 10px;font-size:14px;font-weight:600}
 .hm{font-size:12px;font-weight:600;border-radius:10px;padding:2px 8px;background:#fef3c7;color:#92400e;margin-right:6px}
 .hm.ok{background:#dcfce7;color:var(--green)}.homec{border-color:#bfdbfe}
@@ -428,11 +429,11 @@ const PLACE_COLORS = ["#2563eb", "#ea580c", "#16a34a", "#9333ea", "#db2777", "#0
 
 // ---------------------------------------------------------------- areas: the user's own label per auction, shown under its tile
 function tile(f) {
-  const done = f.cars.filter((c) => c.done).length;
+  const cars = f.cars.filter((c) => !c.out), done = cars.filter((c) => c.done).length;
   return `<div class="tw"><button class="tile" data-k="${H(f.key)}"><span class="h">${H(houseShort(f.house))}</span>
     <span class="n">${H(f.name || "מכרז " + f.key)}</span><span class="d">${H(dateLine(f))}</span>
-    <span class="c">${f.cars.length} רכבים · ${done} נבדקו</span>
-    <span class="bar"><i style="width:${f.cars.length ? (100 * done) / f.cars.length : 0}%"></i></span></button>
+    <span class="c">${cars.length} רכבים · ${done} נבדקו</span>
+    <span class="bar"><i style="width:${cars.length ? (100 * done) / cars.length : 0}%"></i></span></button>
     <button class="area ${f.area ? "on" : ""}" data-k="${H(f.key)}">📍 ${f.area ? H(f.area) : "הוסף אזור"}</button></div>`;
 }
 async function setArea(key) {
@@ -483,12 +484,15 @@ async function formScreen(key) {
       return `<button class="lg ${onlyPlace === p ? "on" : ""}" data-p="${H(p)}"><i style="background:${colorOf(p)}"></i>`
         + `${H(p || "מיקום לא ידוע")} <span>${done}/${all.length}</span></button>`;
     }).join("")}</div>` : "";
-    const open = f.cars.filter((c) => !c.done && hit(c) && inPlace(c)), done = f.cars.filter((c) => c.done && hit(c) && inPlace(c));
-    const prog = isLease(f) && lay(f).home ? `<div class="prog">🏠 בית: ${f.cars.filter((c) => homeDone(f, c)).length} מתוך ${f.cars.length}`
-      + ` · 🚗 שטח: ${f.cars.filter((c) => c.done).length} מתוך ${f.cars.length}</div>` : "";
+    // a car taken off the list (c.out) keeps everything written on it, in a closed section at the bottom
+    const shown = f.cars.filter((c) => !c.out), out = f.cars.filter((c) => c.out && hit(c));
+    const open = shown.filter((c) => !c.done && hit(c) && inPlace(c)), done = shown.filter((c) => c.done && hit(c) && inPlace(c));
+    const prog = isLease(f) && lay(f).home ? `<div class="prog">🏠 בית: ${shown.filter((c) => homeDone(f, c)).length} מתוך ${shown.length}`
+      + ` · 🚗 שטח: ${shown.filter((c) => c.done).length} מתוך ${shown.length}</div>` : "";
     $("#list").innerHTML = prog + legend
       + (open.length ? open.map(row).join("") : `<div class="empty">${q || onlyPlace ? "לא נמצא רכב" : "כל הרכבים נבדקו ✓"}</div>`)
-      + (done.length ? `<div class="sec">נבדקו (${done.length})</div>${done.map(row).join("")}` : "");
+      + (done.length ? `<div class="sec">נבדקו (${done.length})</div>${done.map(row).join("")}` : "")
+      + (out.length ? `<details class="outs"><summary>הוצאו מהרשימה (${out.length})</summary>${out.map(row).join("")}</details>` : "");
     $("#list").querySelectorAll(".lg").forEach((b) => (b.onclick = () => {
       onlyPlace = onlyPlace === b.dataset.p ? null : b.dataset.p;   // a second tap shows all the places again
       draw();
@@ -538,6 +542,7 @@ async function carScreen(key, lot) {
     <div class="card"><h3>פרטי הרכב</h3><div class="two">${L.details.map(input).join("")}</div></div>
     <div class="card"><h3>מידע מהכלי</h3>${tool}</div>`}
     ${car.done ? `<button class="lnk" id="undo">החזר לרשימה (סמן כלא נבדק)</button>` : ""}
+    <button class="lnk" id="out">${car.out ? "↩ החזר את הרכב לרשימה" : "✕ הוצא את הרכב מהרשימה (מה שכתבת נשמר)"}</button>
     </main>
     <div class="foot"><button id="ph">📷 צלם</button><button id="sh">שתף</button><button class="ok" id="ok">✓ אישור</button></div>`;
 
@@ -564,6 +569,11 @@ async function carScreen(key, lot) {
   $("#bk").onclick = async () => { await save(); location.hash = "#f/" + key; };
   $("#ok").onclick = async () => { car.done = true; car.doneAt = Date.now(); await save(); toast(`${L.unit} ${no(f, car)} נשמר ✓`, 1600); location.hash = `#p/${key}/${lot}`; };
   if ($("#undo")) $("#undo").onclick = async () => { car.done = false; await save(); location.hash = "#f/" + key; };
+  $("#out").onclick = async () => {
+    car.out = !car.out; await save();
+    toast(car.out ? "הרכב הוצא מהרשימה. הוא נמצא למטה ב\"הוצאו מהרשימה\", עם כל מה שכתבת." : "הרכב חזר לרשימה", 2600);
+    location.hash = "#f/" + key;
+  };
   $("#sh").onclick = async () => { await save(); shareCar(f, car); };
 
   const drawPhotos = async () => {
