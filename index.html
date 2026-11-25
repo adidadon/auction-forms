@@ -108,6 +108,10 @@ main{padding:14px 16px calc(env(safe-area-inset-bottom) + 96px);max-width:720px;
 .paper .pf{flex:1 1 auto;min-width:34px;border-bottom:1px solid #000;padding:0 3px;min-height:20px;line-height:19px;white-space:nowrap}
 .paper .pf.sm{font-size:12.5px;white-space:pre-line;min-width:0}
 .pv-ph{margin-top:6px}
+.foot[hidden]{display:none}
+.car.pk{padding-inline-start:8px}.car .box{flex:0 0 26px;height:26px;border:2px solid #94a3b8;border-radius:7px;display:flex;
+ align-items:center;justify-content:center;font-weight:700;color:#fff;background:#fff}
+.car.on{border-color:#b91c1c;background:#fef2f2}.car.on .box{background:#b91c1c;border-color:#b91c1c}
 .outs{margin-top:14px}.outs>summary{color:var(--mute);font-size:14px;padding:6px 2px;cursor:pointer}.outs .car{opacity:.55}
 .prog{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:0 0 10px;font-size:14px;font-weight:600}
 .hm{font-size:12px;font-weight:600;border-radius:10px;padding:2px 8px;background:#fef3c7;color:#92400e;margin-right:6px}
@@ -455,12 +459,16 @@ async function formScreen(key) {
   const counts = {};
   (await tx("photos", "readonly", (s) => s.getAll())).filter((p) => p.key === key).forEach((p) => (counts[p.lot] = (counts[p.lot] || 0) + 1));
   app.innerHTML = `<div class="top"><button class="bk" id="bk">→ טפסים</button><h1>${H(f.name || "מכרז " + f.key)}</h1>
-    <button class="mn" id="pr">הדפס</button></div><main>
+    <button class="mn" id="pick">בחר</button><button class="mn" id="pr">הדפס</button></div><main>
     <div class="muted" style="color:var(--mute);font-size:14px;margin:-2px 2px 10px">${H(houseShort(f.house))} · ${H(dateLine(f))}</div>
     <div class="seg"><button id="all">📄 הטופס המלא (כמו בדף)</button></div>
     <input class="search" id="q" type="search" placeholder="חיפוש לפי מספר רכב, סוג או ${isLease(f) ? "מקום" : "פריט"}" value="${H(query)}">
     <div id="list"></div>
-    <button class="lnk danger" id="del">מחק את הטופס מהטלפון</button></main>`;
+    <button class="lnk danger" id="del">מחק את הטופס מהטלפון</button></main>
+    <div class="foot" id="pickbar" hidden><button id="pcancel">ביטול</button><button class="ok" id="pgo" style="background:#b91c1c;border-color:#b91c1c">הוצא מהרשימה (0)</button></div>`;
+  // choosing several cars at once to take off the list (what was written on them is kept)
+  let picking = false;
+  const picked = new Set();
   // cars of one auction often stand in different lots: each place gets a heading and its own color strip
   const placeOf = (c) => val(c, "location").replace(/\s+/g, " ").trim();
   const places = [...new Set(f.cars.map(placeOf))];
@@ -469,8 +477,8 @@ async function formScreen(key) {
   let onlyPlace = null;
   // the whole row in a light shade of its place's color (text stays readable), with a strong strip at the side
   const tint = (p) => { const col = colorOf(p); return `background:${col}24;border-color:${col}66;border-inline-start:7px solid ${col}`; };
-  const row = (c) => `<button class="car ${c.done ? "done" : ""}" data-l="${c.lot}"${multi ? ` style="${tint(placeOf(c))}"` : ""}>
-      <span class="lot">${c.done ? "✓" : `<small>${lay(f).unit}</small>${no(f, c)}`}</span>
+  const row = (c) => `<button class="car ${c.done ? "done" : ""}${picking && !c.out ? " pk" : ""}${picked.has(c.lot) ? " on" : ""}" data-l="${c.lot}"${multi ? ` style="${tint(placeOf(c))}"` : ""}>
+      ${picking && !c.out ? `<span class="box">${picked.has(c.lot) ? "✓" : ""}</span>` : ""}<span class="lot">${c.done ? "✓" : `<small>${lay(f).unit}</small>${no(f, c)}`}</span>
       <span class="t"><b>${H(carTitle(c))}</b><span>${H(val(c, "plate") || "—")} · ${H(val(c, "color") || "—")}${val(c, "year") ? " · " + H(val(c, "year")) : ""}${isLease(f) && val(c, "km") ? " · " + H(val(c, "km")) + " ק\"מ" : ""}${c.done ? ` · ${lay(f).unit} ` + no(f, c) : ""}</span>${isLease(f) ? `<span class="where">${TIER[c.base.tier] || ""}${lay(f).home ? ` · ${homeDone(f, c) ? "🏠 ✓" : "🏠 חסר"}` : ""}</span>` : ""}</span>
       ${counts[c.lot] ? `<span class="ph">📷 ${counts[c.lot]}</span>` : ""}</button>`;
   const draw = () => {
@@ -500,8 +508,29 @@ async function formScreen(key) {
     // a checked car opens as the paper page; one still to check opens for editing
     $("#list").querySelectorAll(".car").forEach((b) => (b.onclick = () => {
       const c = f.cars.find((x) => x.lot === +b.dataset.l);
+      if (picking && c && !c.out) {      // choosing: a tap marks or unmarks the car
+        if (picked.has(c.lot)) picked.delete(c.lot); else picked.add(c.lot);
+        $("#pgo").textContent = `הוצא מהרשימה (${picked.size})`;
+        draw(); return;
+      }
       location.hash = `#${c && c.done ? "p" : "c"}/${key}/${b.dataset.l}`;
     }));
+  };
+  const setPicking = (on) => {
+    picking = on; picked.clear();
+    $("#pickbar").hidden = !on; $("#pick").textContent = on ? "סיום" : "בחר";
+    $("#pgo").textContent = "הוצא מהרשימה (0)";
+    if (on) toast("סמן את הרכבים שרוצים להוציא, ולחץ למטה \"הוצא מהרשימה\"", 2600);
+    draw();
+  };
+  $("#pick").onclick = () => setPicking(!picking);
+  $("#pcancel").onclick = () => setPicking(false);
+  $("#pgo").onclick = async () => {
+    if (!picked.size) { toast("לא סומנו רכבים"); return; }
+    f.cars.forEach((c) => { if (picked.has(c.lot)) c.out = true; });
+    await putForm(f);
+    toast(`${picked.size} רכבים הוצאו. הם למטה ב"הוצאו מהרשימה", עם כל מה שכתבת.`, 2800);
+    setPicking(false);
   };
   draw();
   $("#all").onclick = () => (location.hash = "#a/" + key);
